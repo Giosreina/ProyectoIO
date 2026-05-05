@@ -1,3 +1,21 @@
+## Arquitectura de Software
+
+El proyecto implementa una aplicación de escritorio para resolver problemas de programación lineal utilizando el Método de la Gran M. La arquitectura sigue un patrón Modelo-Vista-Controlador (MVC) simplificado:
+
+- **Modelo**: Las funciones `parse_expr`, `parse_constraint`, `solve_gran_m` y `fmt_frac` manejan la lógica de negocio, incluyendo el parsing de expresiones, la resolución del problema y el formateo de resultados.
+- **Vista**: La interfaz gráfica de usuario (GUI) está construida con PyQt6, utilizando widgets como `QMainWindow`, `QWidget`, `QTableWidget`, etc., para mostrar entradas, resultados y iteraciones del algoritmo.
+- **Controlador**: La clase `InputPanel` y otras clases de la GUI manejan la interacción del usuario, recopilando entradas y disparando la resolución del problema.
+
+El flujo de ejecución comienza en la GUI, donde el usuario ingresa datos, luego se invoca `solve_gran_m` para calcular la solución, y finalmente se muestran los resultados en tablas y texto formateado.
+
+## Librerías Utilizadas
+
+- **sys**: Para manejo del sistema y argumentos de línea de comandos.
+- **re**: Para expresiones regulares, utilizado en el parsing de expresiones matemáticas.
+- **fractions.Fraction**: Para representar coeficientes y valores con precisión fraccionaria, evitando errores de punto flotante.
+- **PyQt6.QtWidgets**: Para crear la interfaz gráfica, incluyendo ventanas, botones, tablas y layouts.
+- **PyQt6.QtCore**: Para señales, hilos y utilidades básicas de Qt, como `QThread` y `QTimer`.
+- **PyQt6.QtGui**: Para elementos gráficos como fuentes, colores y gradientes utilizados en el estilo de la aplicación.
 
 ## Función: `parse_expr(expr_str, var_names)`
 
@@ -98,6 +116,7 @@ parse_constraint("6x1 + 3x2 <= 96", ["x1", "x2"])  # ({"x1": 6, "x2": 3}, "<=", 
 fmt_frac(Fraction(5,2))  # "2.5"
 fmt_frac(1000000)       # "+M"
 ```
+
 
 ## Función: `styled_item(text, bg=None, fg=TEXT_MAIN, bold=False, center=True)`
 

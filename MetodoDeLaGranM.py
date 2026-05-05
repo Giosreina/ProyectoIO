@@ -10,10 +10,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QFont, QColor, QPalette, QLinearGradient, QGradient, QPainter, QBrush
 
-# ─────────────────────────────────────────────
-#  SOLVER (lógica original adaptada)
-# ─────────────────────────────────────────────
-
 M_VALUE = 1_000_000
 
 
@@ -50,7 +46,6 @@ def parse_constraint(line, var_names):
 
 
 def solve_gran_m(maximizar, n_orig, fo_str, constraint_lines):
-    """Returns list of iteration data dicts + result info."""
     orig_vars = [f"x{i+1}" for i in range(n_orig)]
     fo_coeffs = parse_expr(fo_str, orig_vars)
 
@@ -207,10 +202,6 @@ def solve_gran_m(maximizar, n_orig, fo_str, constraint_lines):
     }
 
 
-# ─────────────────────────────────────────────
-#  HELPERS UI
-# ─────────────────────────────────────────────
-
 DARK_BG     = "#0D1117"
 PANEL_BG    = "#161B22"
 CARD_BG     = "#1C2128"
@@ -231,7 +222,6 @@ MONO.setStyleHint(QFont.StyleHint.Monospace)
 
 
 def fmt_frac(val):
-    """Format Fraction or float for display."""
     if isinstance(val, Fraction):
         if val.denominator == 1:
             return str(val.numerator)
@@ -259,11 +249,6 @@ def styled_item(text, bg=None, fg=TEXT_MAIN, bold=False, center=True):
         item.setFont(f)
     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
     return item
-
-
-# ─────────────────────────────────────────────
-#  STYLESHEET
-# ─────────────────────────────────────────────
 
 STYLESHEET = f"""
 QMainWindow, QWidget {{
@@ -430,11 +415,6 @@ QSplitter::handle {{
 }}
 """
 
-
-# ─────────────────────────────────────────────
-#  PANEL DE ENTRADA
-# ─────────────────────────────────────────────
-
 class InputPanel(QWidget):
     solve_requested = pyqtSignal(bool, int, str, list)
 
@@ -580,11 +560,6 @@ class InputPanel(QWidget):
         for rw in self._constraint_rows:
             rw.input.clear()
 
-
-# ─────────────────────────────────────────────
-#  TABLA DE ITERACIÓN
-# ─────────────────────────────────────────────
-
 class IterationTable(QWidget):
     def __init__(self, data):
         super().__init__()
@@ -719,11 +694,6 @@ class IterationTable(QWidget):
         tbl.setFixedHeight(min(total_h, 400))
 
         layout.addWidget(tbl)
-
-
-# ─────────────────────────────────────────────
-#  PANEL DE RESULTADOS
-# ─────────────────────────────────────────────
 
 class ResultsPanel(QWidget):
     def __init__(self):
@@ -875,10 +845,6 @@ class ResultsPanel(QWidget):
         ))
 
 
-# ─────────────────────────────────────────────
-#  VENTANA PRINCIPAL
-# ─────────────────────────────────────────────
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -919,11 +885,6 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error al resolver", str(e))
             self.results_panel.status_label.setText("Error al resolver")
             self.results_panel.status_label.setStyleSheet(f"color: {WARN};")
-
-
-# ─────────────────────────────────────────────
-#  ENTRY POINT
-# ─────────────────────────────────────────────
 
 def main():
     app = QApplication(sys.argv)

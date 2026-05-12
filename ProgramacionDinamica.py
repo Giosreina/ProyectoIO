@@ -140,7 +140,7 @@ class ModeloPD :
     def tabla_personalizada (matriz :list ,tipo :str )->dict :
         """
         DP multi-etapa sobre retornos r[etapa][estado].
-        Recurrencia: f[e][s] = max/min{ f[e-1][s'] + r[e][s] }  ∀ s'≥s
+        Recurrencia: f[e][s] = max/min{ f[e-1][s'], r[e][s] }  ∀ s'≥s
         Complejidad: O(etapas · estados²)
         """
         etapas =len (matriz )
@@ -151,15 +151,16 @@ class ModeloPD :
         dec =[[-1 ]*estados for _ in range (etapas )]
         pasos =[]
 
-
+        inicio = estados - 1
         for s in range (estados ):
-            f [0 ][s ]=matriz [0 ][s ]
+            f [0 ][s ] = -INF if tipo == 'max' else INF
+        f [0 ][inicio ] = matriz [0 ][inicio ]
         for e in range (1 ,etapas ):
             for s in range (estados ):
                 for ps in range (s ,estados ):
                     if abs (f [e -1 ][ps ])==INF :
                         continue 
-                    cand =f [e -1 ][ps ]+matriz [e ][s ]
+                    cand =max (f [e -1 ][ps ],matriz [e ][s ])if tipo =='max'else min (f [e -1 ][ps ],matriz [e ][s ])
                     if tipo =='max'and cand >f [e ][s ]:
                         f [e ][s ]=cand 
                         dec [e ][s ]=ps 
@@ -169,7 +170,7 @@ class ModeloPD :
             mejor =(max if tipo =='max'else min )(range (estados ),key =lambda s :f [e ][s ])
             pasos .append ({
             "etapa":f"E{e +1 }","estado":f"s={mejor }",
-            "valor":f [e ][mejor ],
+            "valor":f [e ][mejor ]if abs (f [e ][mejor ])!=INF else None ,
             "decision":f"desde s'={dec [e ][mejor ]}",
             })
 
@@ -186,7 +187,7 @@ class ModeloPD :
 
         return {
         "algoritmo":"Tabla Personalizada",
-        "recurrencia":f"f[e][s] = {tipo }{{ f[e-1][s'] + r[e][s] }}",
+        "recurrencia":f"f[e][s] = {tipo }{{ f[e-1][s'], r[e][s] }}",
         "tipo":tipo ,
         "optimo":None if abs (optimo )==INF else optimo ,
         "camino":camino ,

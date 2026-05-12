@@ -1,0 +1,1104 @@
+import sys 
+from PyQt6 .QtWidgets import (
+QApplication ,QMainWindow ,QWidget ,QVBoxLayout ,QHBoxLayout ,
+QGridLayout ,QLabel ,QComboBox ,QSpinBox ,QPushButton ,
+QTableWidget ,QTableWidgetItem ,QScrollArea ,QFrame ,
+QHeaderView ,QGroupBox ,QTextEdit ,QSplitter ,
+)
+from PyQt6 .QtCore import Qt 
+from PyQt6 .QtGui import QFont ,QColor 
+
+class ModeloPD :
+
+    @staticmethod 
+    def mochila_01 (valores :list ,pesos :list ,W :int ,tipo :str )->dict :
+        n =len (valores )
+        INF =float ('inf')
+        dp =[[0 ]*(W +1 )for _ in range (n +1 )]
+        if tipo =='min':
+            for i in range (n +1 ):
+                for w in range (W +1 ):
+                    dp [i ][w ]=INF 
+            for i in range (n +1 ):
+                dp [i ][0 ]=0 
+
+        pasos =[]
+        for i in range (1 ,n +1 ):
+            vi ,pi =valores [i -1 ],pesos [i -1 ]
+            for w in range (W +1 ):
+                dp [i ][w ]=dp [i -1 ][w ]
+                decision ="no incluir"
+                if pi <=w :
+                    prev =dp [i -1 ][w -pi ]
+                    if prev !=INF :
+                        cand =prev +vi 
+                        if tipo =='max'and cand >dp [i ][w ]:
+                            dp [i ][w ]=cand 
+                            decision ="incluir"
+                        elif tipo =='min'and cand <dp [i ][w ]:
+                            dp [i ][w ]=cand 
+                            decision ="incluir"
+                if w ==W :
+                    pasos .append ({
+                    "etapa":f"Ítem {i }  v={vi } p={pi }",
+                    "estado":f"w={w }",
+                    "valor":dp [i ][w ]if dp [i ][w ]!=INF else None ,
+                    "decision":decision ,
+                    })
+        sel ,w_rem =[],W 
+        for i in range (n ,0 ,-1 ):
+            if dp [i ][w_rem ]!=dp [i -1 ][w_rem ]:
+                sel .append (i -1 )
+                w_rem -=pesos [i -1 ]
+        sel .reverse ()
+        path =set ()
+        w =W 
+        for i in range (n ,0 ,-1 ):
+            path .add ((i ,w ))
+            if dp [i ][w ]!=dp [i -1 ][w ]:
+                w -=pesos [i -1 ]
+        path .add ((0 ,w ))
+
+        optimo =dp [n ][W ]
+        dp_j =[[None if x ==INF else x for x in r ]for r in dp ]
+        return {
+        "algoritmo":"Mochila 0/1",
+        "recurrencia":f"dp[i][w] = {tipo }( dp[i-1][w],  dp[i-1][w-p[i]] + v[i] )",
+        "tipo":tipo ,
+        "optimo":None if optimo ==INF else optimo ,
+        "seleccionados":sel ,
+        "peso_usado":sum (pesos [i ]for i in sel ),
+        "capacidad":W ,"n":n ,
+        "valores":valores ,"pesos":pesos ,
+        "dp":dp_j ,"dim":"2d",
+        "filas":["Vacío"]+[f"I{i +1 }"for i in range (n )],
+        "columnas":[str (w )for w in range (W +1 )],
+        "pasos":pasos ,
+        "factible":optimo !=INF ,
+        "path":path ,
+        }
+    @staticmethod 
+    def mochila_ilimitada (valores :list ,pesos :list ,W :int ,tipo :str )->dict :
+        """
+        Ítems reutilizables sin límite.
+        Recurrencia: dp[w] = max/min{ dp[w-p[i]] + v[i] }  ∀ i
+        Complejidad: O(n·W)
+        """
+        n =len (valores )
+        INF =float ('inf')
+        dp =[0 ]+([-INF if tipo =='max'else INF ]*W )
+        desde =[-1 ]*(W +1 )
+        pasos =[]
+
+        for w in range (1 ,W +1 ):
+            for i in range (n ):
+                if pesos [i ]<=w :
+                    prev =dp [w -pesos [i ]]
+                    if abs (prev )==INF :
+                        continue 
+                    cand =prev +valores [i ]
+                    if tipo =='max'and cand >dp [w ]:
+                        dp [w ]=cand 
+                        desde [w ]=i 
+                    elif tipo =='min'and cand <dp [w ]:
+                        dp [w ]=cand 
+                        desde [w ]=i 
+            if desde [w ]!=-1 :
+                i =desde [w ]
+                pasos .append ({
+                "etapa":f"w={w }",
+                "estado":f"I{i +1 }",
+                "valor":dp [w ]if abs (dp [w ])!=INF else None ,
+                "decision":f"usar I{i +1 } (v={valores [i ]}, p={pesos [i ]})",
+                })
+
+        usados :dict ={}
+        rem =W 
+        while rem >0 and desde [rem ]!=-1 :
+            i =desde [rem ]
+            usados [i ]=usados .get (i ,0 )+1 
+            rem -=pesos [i ]
+
+        optimo =dp [W ]
+        dp_j =[None if abs (x )==INF else x for x in dp ]
+        return {
+        "algoritmo":"Mochila Ilimitada",
+        "recurrencia":f"dp[w] = {tipo }{{ dp[w-p[i]] + v[i] }}  ∀ i",
+        "tipo":tipo ,
+        "optimo":None if abs (optimo )==INF else optimo ,
+        "usados":usados ,
+        "capacidad":W ,"n":n ,
+        "valores":valores ,"pesos":pesos ,
+        "dp":dp_j ,"dim":"1d",
+        "filas":["dp[w]"],
+        "columnas":[str (w )for w in range (W +1 )],
+        "pasos":pasos ,
+        "factible":abs (optimo )!=INF ,
+        "path":{W },
+        }
+    @staticmethod 
+    def tabla_personalizada (matriz :list ,tipo :str )->dict :
+        """
+        DP multi-etapa sobre retornos r[etapa][estado].
+        Recurrencia: f[e][s] = max/min{ f[e-1][s'] + r[e][s] }  ∀ s'≥s
+        Complejidad: O(etapas · estados²)
+        """
+        etapas =len (matriz )
+        estados =len (matriz [0 ])if etapas else 0 
+        INF =float ('inf')
+
+        f =[[-INF if tipo =='max'else INF ]*estados for _ in range (etapas )]
+        dec =[[-1 ]*estados for _ in range (etapas )]
+        pasos =[]
+
+
+        for s in range (estados ):
+            f [0 ][s ]=matriz [0 ][s ]
+        for e in range (1 ,etapas ):
+            for s in range (estados ):
+                for ps in range (s ,estados ):
+                    if abs (f [e -1 ][ps ])==INF :
+                        continue 
+                    cand =f [e -1 ][ps ]+matriz [e ][s ]
+                    if tipo =='max'and cand >f [e ][s ]:
+                        f [e ][s ]=cand 
+                        dec [e ][s ]=ps 
+                    elif tipo =='min'and cand <f [e ][s ]:
+                        f [e ][s ]=cand 
+                        dec [e ][s ]=ps 
+            mejor =(max if tipo =='max'else min )(range (estados ),key =lambda s :f [e ][s ])
+            pasos .append ({
+            "etapa":f"E{e +1 }","estado":f"s={mejor }",
+            "valor":f [e ][mejor ],
+            "decision":f"desde s'={dec [e ][mejor ]}",
+            })
+
+        mejor_f =(max if tipo =='max'else min )(range (estados ),key =lambda s :f [etapas -1 ][s ])
+        camino =[mejor_f ]
+        cur =mejor_f 
+        for e in range (etapas -1 ,0 ,-1 ):
+            cur =dec [e ][cur ]
+            camino .insert (0 ,cur )
+
+        optimo =f [etapas -1 ][mejor_f ]
+        f_j =[[None if abs (x )==INF else x for x in r ]for r in f ]
+        path =set ((e ,camino [e ])for e in range (etapas ))
+
+        return {
+        "algoritmo":"Tabla Personalizada",
+        "recurrencia":f"f[e][s] = {tipo }{{ f[e-1][s'] + r[e][s] }}",
+        "tipo":tipo ,
+        "optimo":None if abs (optimo )==INF else optimo ,
+        "camino":camino ,
+        "dp":f_j ,"dim":"2d",
+        "filas":[f"E{e +1 }"for e in range (etapas )],
+        "columnas":[str (s )for s in range (estados )],
+        "pasos":pasos ,
+        "factible":abs (optimo )!=INF ,
+        "path":path ,
+        }
+
+    @staticmethod 
+    def camino_dag (n_nodos :int ,aristas :list ,origen :int ,destino :int ,tipo :str )->dict :
+        """
+        Camino óptimo en grafo acíclico dirigido.
+        Recurrencia: dist[v] = min/max{ dist[u] + w(u,v) }
+        Complejidad: O(V + E)
+        """
+        INF =float ('inf')
+        adj ={i :[]for i in range (n_nodos )}
+        in_deg =[0 ]*n_nodos 
+        for de ,a ,w in aristas :
+            adj [de ].append ((a ,w ))
+            in_deg [a ]+=1 
+
+
+        cola =[i for i in range (n_nodos )if in_deg [i ]==0 ]
+        topo =[]
+        while cola :
+            u =cola .pop (0 )
+            topo .append (u )
+            for v ,_ in adj [u ]:
+                in_deg [v ]-=1 
+                if in_deg [v ]==0 :
+                    cola .append (v )
+
+        if len (topo )!=n_nodos :
+            return {"error":"El grafo tiene un ciclo. Ingrese un DAG.","factible":False }
+
+        dist =[-INF if tipo =='max'else INF ]*n_nodos 
+        dist [origen ]=0 
+        padre =[-1 ]*n_nodos 
+        pasos =[]
+
+        for u in topo :
+            if abs (dist [u ])==INF :
+                continue 
+            for v ,w in adj [u ]:
+                cand =dist [u ]+w 
+                if tipo =='max'and cand >dist [v ]:
+                    dist [v ]=cand 
+                    padre [v ]=u 
+                    pasos .append ({
+                    "etapa":f"{u }→{v }","estado":str (v ),
+                    "valor":cand ,"decision":f"vía nodo {u } (w={w })",
+                    })
+                elif tipo =='min'and cand <dist [v ]:
+                    dist [v ]=cand 
+                    padre [v ]=u 
+                    pasos .append ({
+                    "etapa":f"{u }→{v }","estado":str (v ),
+                    "valor":cand ,"decision":f"vía nodo {u } (w={w })",
+                    })
+
+        camino =[]
+        cur =destino 
+        while cur !=-1 :
+            camino .insert (0 ,cur )
+            cur =padre [cur ]
+
+        optimo =dist [destino ]
+        dp_j =[None if abs (x )==INF else x for x in dist ]
+        return {
+        "algoritmo":"Camino en DAG",
+        "recurrencia":f"dist[v] = {tipo }{{ dist[u] + w(u,v) }}",
+        "tipo":tipo ,
+        "optimo":None if abs (optimo )==INF else optimo ,
+        "camino":camino if camino and camino [0 ]==origen else [],
+        "n_nodos":n_nodos ,
+        "dp":dp_j ,"dim":"1d",
+        "filas":["dist[v]"],
+        "columnas":[str (v )for v in range (n_nodos )],
+        "pasos":pasos ,
+        "factible":abs (optimo )!=INF ,
+        "path":set (camino )if camino else set (),
+        }
+
+
+
+
+
+
+C ={
+"bg_deep":"#090c10",
+"bg_panel":"#0e1219",
+"bg_card":"#131820",
+"bg_input":"#192030",
+"accent":"#00aaff",
+"accent2":"#f0a500",
+"accent3":"#00e676",
+"accent4":"#ff6b6b",
+"text_p":"#cdd9e8",
+"text_s":"#5d7a93",
+"text_m":"#2e4257",
+"border":"#1a2a3a",
+"border_a":"#08405e",
+}
+
+QSS =f"""
+* {{ font-family: 'Segoe UI', 'Arial', sans-serif; font-size: 12px; }}
+
+QMainWindow, QWidget {{
+    background-color: {C ['bg_deep']};
+    color: {C ['text_p']};
+}}
+
+QGroupBox {{
+    background-color: {C ['bg_panel']};
+    border: 1px solid {C ['border']};
+    border-radius: 4px;
+    margin-top: 10px;
+    padding-top: 10px;
+    color: {C ['accent']};
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}}
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+}}
+
+QLabel {{ color: {C ['text_s']}; font-size: 11px; }}
+
+QComboBox {{
+    background-color: {C ['bg_input']};
+    border: 1px solid {C ['border_a']};
+    color: {C ['text_p']};
+    padding: 4px 8px;
+    border-radius: 3px;
+    min-width: 130px;
+}}
+QComboBox:focus {{ border-color: {C ['accent']}; }}
+QComboBox::drop-down {{ border: none; width: 16px; }}
+QComboBox QAbstractItemView {{
+    background-color: {C ['bg_panel']};
+    color: {C ['text_p']};
+    selection-background-color: {C ['border_a']};
+    border: 1px solid {C ['border_a']};
+}}
+
+QSpinBox {{
+    background-color: {C ['bg_input']};
+    border: 1px solid {C ['border_a']};
+    color: {C ['text_p']};
+    padding: 4px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    min-width: 60px;
+}}
+QSpinBox:focus {{ border-color: {C ['accent']}; }}
+QSpinBox::up-button, QSpinBox::down-button {{
+    background: {C ['bg_panel']}; border: none; width: 14px;
+}}
+
+QTextEdit {{
+    background-color: {C ['bg_input']};
+    border: 1px solid {C ['border_a']};
+    color: {C ['text_p']};
+    padding: 5px 8px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+}}
+QTextEdit:focus {{ border-color: {C ['accent']}; }}
+
+QPushButton {{
+    background-color: transparent;
+    border: 1px solid {C ['border']};
+    color: {C ['text_s']};
+    padding: 6px 14px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}}
+QPushButton:hover {{ border-color: {C ['text_s']}; color: {C ['text_p']}; }}
+
+QPushButton#btn_gen {{
+    border-color: {C ['border_a']}; color: {C ['accent']};
+}}
+QPushButton#btn_gen:hover {{
+    background-color: rgba(0,170,255,60); border-color: {C ['accent']};
+}}
+
+QPushButton#btn_clear {{
+    border-color: {C ['border']}; color: {C ['text_s']};
+}}
+QPushButton#btn_clear:hover {{
+    border-color: {C ['text_s']}; color: {C ['text_p']};
+}}
+
+QPushButton#btn_solve {{
+    border-color: {C ['accent']}; color: {C ['accent']}; padding: 7px 20px;
+}}
+QPushButton#btn_solve:hover {{
+    background-color: rgba(0,170,255,40);
+}}
+
+QTableWidget {{
+    background-color: {C ['bg_card']};
+    border: 1px solid {C ['border']};
+    gridline-color: {C ['border']};
+    color: {C ['text_s']};
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    selection-background-color: rgba(0,170,255,40);
+    selection-color: {C ['text_p']};
+}}
+QTableWidget::item {{ padding: 3px 6px; }}
+
+QHeaderView::section {{
+    background-color: {C ['bg_panel']};
+    color: {C ['accent']};
+    border: none;
+    border-right: 1px solid {C ['border']};
+    border-bottom: 1px solid {C ['border_a']};
+    padding: 4px 8px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    font-family: 'Courier New', monospace;
+    font-weight: normal;
+}}
+
+QScrollArea {{ border: none; background: transparent; }}
+
+QScrollBar:vertical {{
+    background: {C ['bg_deep']}; width: 6px; border: none; margin: 0;
+}}
+QScrollBar::handle:vertical {{
+    background: {C ['border_a']}; border-radius: 3px; min-height: 24px;
+}}
+QScrollBar::handle:vertical:hover {{ background: {C ['accent']}; }}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; border: none; }}
+
+QScrollBar:horizontal {{
+    background: {C ['bg_deep']}; height: 6px; border: none; margin: 0;
+}}
+QScrollBar::handle:horizontal {{
+    background: {C ['border_a']}; border-radius: 3px; min-width: 24px;
+}}
+QScrollBar::handle:horizontal:hover {{ background: {C ['accent']}; }}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; border: none; }}
+
+QSplitter::handle {{ background: {C ['border']}; }}
+QFrame#hdr_frame {{ background-color: {C ['bg_panel']}; border-bottom: 1px solid {C ['border_a']}; }}
+QFrame#sidebar_frame {{ background-color: {C ['bg_panel']}; border-right: 1px solid {C ['border']}; }}
+QFrame#card {{ background-color: {C ['bg_card']}; border: 1px solid {C ['border_a']}; border-radius: 4px; }}
+QFrame#card_info {{ background-color: {C ['bg_card']}; border: 1px solid {C ['border']}; border-left: 2px solid {C ['accent2']}; border-radius: 4px; }}
+"""
+
+
+
+
+
+
+class ItemTableWidget (QWidget ):
+    """Tabla editable de ítems con valor y peso."""
+
+    _DEF_V =[3 ,4 ,5 ,6 ,2 ,7 ,1 ,8 ,3 ,5 ,4 ,6 ]
+    _DEF_P =[2 ,3 ,4 ,5 ,1 ,3 ,2 ,6 ,2 ,4 ,1 ,3 ]
+
+    def __init__ (self ,n :int =4 ,parent =None ):
+        super ().__init__ (parent )
+        lay =QVBoxLayout (self )
+        lay .setContentsMargins (0 ,0 ,0 ,0 )
+        self ._tbl =QTableWidget ()
+        self ._tbl .setColumnCount (3 )
+        self ._tbl .setHorizontalHeaderLabels (["Ítem","Valor","Peso"])
+        self ._tbl .horizontalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .Stretch )
+        self ._tbl .verticalHeader ().setVisible (False )
+        lay .addWidget (self ._tbl )
+        self .rebuild (n )
+
+    def rebuild (self ,n :int ):
+        self ._tbl .setRowCount (n )
+        for i in range (n ):
+            lbl =QTableWidgetItem (f"I{i +1 }")
+            lbl .setForeground (QColor (C ["accent2"]))
+            lbl .setFlags (Qt .ItemFlag .ItemIsEnabled )
+            self ._tbl .setItem (i ,0 ,lbl )
+            self ._tbl .setItem (i ,1 ,QTableWidgetItem (str (self ._DEF_V [i ]if i <len (self ._DEF_V )else i +1 )))
+            self ._tbl .setItem (i ,2 ,QTableWidgetItem (str (self ._DEF_P [i ]if i <len (self ._DEF_P )else 1 )))
+        h =min (n *27 +32 ,260 )
+        self ._tbl .setFixedHeight (h )
+
+    def get_data (self )->tuple :
+        n =self ._tbl .rowCount ()
+        vals ,pesos =[],[]
+        for i in range (n ):
+            vt =self ._tbl .item (i ,1 )
+            pt =self ._tbl .item (i ,2 )
+            vals .append (int (vt .text ())if vt and vt .text ().lstrip ('-').isdigit ()else 1 )
+            pesos .append (max (1 ,int (pt .text ()))if pt and pt .text ().lstrip ('-').isdigit ()else 1 )
+        return vals ,pesos 
+
+
+class MatrizWidget (QWidget ):
+    """Tabla editable de retornos r[etapa][estado]."""
+
+    def __init__ (self ,etapas :int =3 ,estados :int =5 ,parent =None ):
+        super ().__init__ (parent )
+        lay =QVBoxLayout (self )
+        lay .setContentsMargins (0 ,0 ,0 ,0 )
+        self ._tbl =QTableWidget ()
+        lay .addWidget (self ._tbl )
+        self .rebuild (etapas ,estados )
+
+    def rebuild (self ,etapas :int ,estados :int ):
+        import random 
+        self ._tbl .setRowCount (etapas )
+        self ._tbl .setColumnCount (estados )
+        self ._tbl .setHorizontalHeaderLabels ([str (s )for s in range (estados )])
+        self ._tbl .setVerticalHeaderLabels ([f"E{e +1 }"for e in range (etapas )])
+        self ._tbl .horizontalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .ResizeToContents )
+        for e in range (etapas ):
+            for s in range (estados ):
+                self ._tbl .setItem (e ,s ,QTableWidgetItem (str (random .randint (1 ,9 ))))
+        h =min (etapas *27 +32 ,200 )
+        self ._tbl .setFixedHeight (h )
+
+    def get_data (self )->list :
+        rows ,cols =self ._tbl .rowCount (),self ._tbl .columnCount ()
+        return [
+        [int (self ._tbl .item (r ,c ).text ())
+        if self ._tbl .item (r ,c )and self ._tbl .item (r ,c ).text ().lstrip ('-').isdigit ()else 0 
+        for c in range (cols )]
+        for r in range (rows )
+        ]
+
+
+class PanelResultados (QWidget ):
+    """Panel derecho: muestra la tabla DP y la solución."""
+
+    def __init__ (self ,parent =None ):
+        super ().__init__ (parent )
+        root =QVBoxLayout (self )
+        root .setContentsMargins (16 ,14 ,16 ,14 )
+        root .setSpacing (10 )
+
+
+        self ._lbl_hdr =QLabel ("Sin resultados")
+        self ._lbl_hdr .setStyleSheet (f"color:{C ['text_s']}; font-size:9px; font-weight:bold; letter-spacing:3px;")
+        root .addWidget (self ._lbl_hdr )
+
+        sub =QLabel ("TABLA DP  &  SOLUCIÓN")
+        sub .setStyleSheet (
+        f"color:{C ['accent']}; font-size:12px; font-weight:bold; letter-spacing:2px;"
+        f"border-bottom:1px solid {C ['border_a']}; padding-bottom:6px;"
+        )
+        root .addWidget (sub )
+
+
+        self ._scroll =QScrollArea ()
+        self ._scroll .setWidgetResizable (True )
+        self ._scroll .setFrameShape (QFrame .Shape .NoFrame )
+        self ._contenedor =QWidget ()
+        self ._lay =QVBoxLayout (self ._contenedor )
+        self ._lay .setContentsMargins (0 ,0 ,6 ,0 )
+        self ._lay .setSpacing (10 )
+        self ._scroll .setWidget (self ._contenedor )
+        root .addWidget (self ._scroll )
+
+        self ._mostrar_vacio ()
+
+
+    def _limpiar (self ):
+        while self ._lay .count ():
+            item =self ._lay .takeAt (0 )
+            if item .widget ():
+                item .widget ().deleteLater ()
+
+    def _mostrar_vacio (self ):
+        lbl =QLabel ("Configure y presione  ▶ Resolver")
+        lbl .setAlignment (Qt .AlignmentFlag .AlignCenter )
+        lbl .setStyleSheet (f"color:{C ['text_m']}; font-size:12px; letter-spacing:2px; padding:60px 0;")
+        self ._lay .addWidget (lbl )
+
+    def _sec_title (self ,txt :str )->QLabel :
+        lbl =QLabel (txt .upper ())
+        lbl .setStyleSheet (
+        f"color:{C ['accent']}; font-size:9px; font-weight:bold; letter-spacing:3px;"
+        f"border-left:2px solid {C ['accent']}; padding-left:7px; margin-top:6px;"
+        )
+        return lbl 
+
+    def _make_table (self ,headers_h ,headers_v ,cells ,
+    path =None ,opt_cell =None )->QTableWidget :
+        """Crea un QTableWidget estilizado con coloreo de celdas."""
+        rows ,cols =len (headers_v ),len (headers_h )
+        tbl =QTableWidget (rows ,cols )
+        tbl .setHorizontalHeaderLabels (headers_h )
+        tbl .setVerticalHeaderLabels (headers_v )
+        tbl .horizontalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .ResizeToContents )
+        tbl .verticalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .ResizeToContents )
+
+        for r in range (rows ):
+            for c in range (cols ):
+                val =cells [r ][c ]if isinstance (cells [0 ],list )else cells [c ]
+                txt =str (val )if val is not None else "∞"
+                item =QTableWidgetItem (txt )
+                item .setTextAlignment (Qt .AlignmentFlag .AlignCenter )
+                item .setFlags (Qt .ItemFlag .ItemIsEnabled |Qt .ItemFlag .ItemIsSelectable )
+
+
+                key =(r ,c )if isinstance (cells [0 ],list )else c 
+                if opt_cell and key ==opt_cell :
+                    item .setForeground (QColor (C ["accent3"]))
+                    item .setFont (QFont ("Courier New",10 ,QFont .Weight .Bold ))
+                elif path and key in path :
+                    item .setBackground (QColor (0 ,170 ,255 ,18 ))
+                    item .setForeground (QColor (C ["accent"]))
+                else :
+                    item .setForeground (QColor (C ["text_s"]))
+
+                tbl .setItem (r ,c ,item )
+
+        h =min (rows *26 +34 ,300 )
+        tbl .setFixedHeight (h )
+        return tbl 
+
+
+    def mostrar_error (self ,msg :str ):
+        self ._limpiar ()
+        self ._lbl_hdr .setText ("Error")
+        lbl =QLabel (f"⚠  {msg }")
+        lbl .setWordWrap (True )
+        lbl .setStyleSheet (
+        f"color:{C ['accent4']}; background:{C ['bg_card']};"
+        f"border:1px solid rgba(255,107,107,80); border-radius:4px;"
+        f"padding:10px 14px; font-family:'Courier New',monospace; font-size:11px;"
+        )
+        self ._lay .addWidget (lbl )
+        self ._lay .addStretch ()
+
+    def limpiar_pantalla (self ):
+        self ._limpiar ()
+        self ._lbl_hdr .setText ("Sin resultados")
+        self ._mostrar_vacio ()
+
+    def mostrar_resultado (self ,d :dict ):
+        self ._limpiar ()
+        self ._lbl_hdr .setText ("Resultados")
+        lay =self ._lay 
+
+
+        lay .addWidget (self ._build_info_box (d ))
+
+
+        lay .addWidget (self ._build_opt_card (d ))
+
+
+        lay .addWidget (self ._sec_title ("Tabla DP"))
+        lay .addWidget (self ._build_dp_table (d ))
+
+
+        if d .get ("pasos"):
+            lay .addWidget (self ._sec_title ("Traza de decisiones"))
+            lay .addWidget (self ._build_pasos (d ["pasos"]))
+
+
+        det =self ._build_detalle (d )
+        if det :
+            lay .addWidget (self ._sec_title ("Detalle de la solución"))
+            lay .addWidget (det )
+
+        lay .addStretch ()
+
+
+    def _build_info_box (self ,d :dict )->QFrame :
+        frame =QFrame ();frame .setObjectName ("card_info")
+        lay =QVBoxLayout (frame )
+        lay .setContentsMargins (12 ,9 ,12 ,9 )
+        lay .setSpacing (5 )
+
+        tipo_str ="Maximizar"if d ["tipo"]=="max"else "Minimizar"
+        t =QLabel (f"<b style='color:{C ['accent2']}'>{d ['algoritmo']}</b>"
+        f"  —  <span style='color:{C ['text_s']}'>{tipo_str }</span>")
+        t .setStyleSheet ("font-size:12px;")
+        lay .addWidget (t )
+
+        rec =QLabel (d .get ("recurrencia",""))
+        rec .setStyleSheet (
+        f"color:{C ['accent']}; background:{C ['bg_input']};"
+        f"border-radius:3px; padding:4px 8px;"
+        f"font-family:'Courier New',monospace; font-size:11px;"
+        )
+        lay .addWidget (rec )
+        return frame 
+
+    def _build_opt_card (self ,d :dict )->QFrame :
+        frame =QFrame ();frame .setObjectName ("card")
+        lay =QHBoxLayout (frame )
+        lay .setContentsMargins (16 ,12 ,16 ,12 )
+        lay .setSpacing (28 )
+
+
+        col1 =QVBoxLayout ()
+        l1 =QLabel ("VALOR ÓPTIMO")
+        l1 .setStyleSheet (f"color:{C ['text_s']}; font-size:9px; letter-spacing:2px; border:none; padding:0;")
+        v1 =QLabel (str (d ["optimo"])if d ["optimo"]is not None else "∞")
+        v1 .setStyleSheet (f"color:{C ['accent3']}; font-size:26px; font-family:'Courier New',monospace;")
+        col1 .addWidget (l1 );col1 .addWidget (v1 )
+        lay .addLayout (col1 )
+
+
+        col2 =QVBoxLayout ()
+        col2 .setSpacing (3 )
+        if "seleccionados"in d and d .get ("seleccionados")is not None :
+            vals ,pesos =d .get ("valores",[]),d .get ("pesos",[])
+            items_str =", ".join (f"I{i +1 }(v={vals [i ]},p={pesos [i ]})"
+            for i in d ["seleccionados"])or "(ninguno)"
+            col2 .addWidget (self ._kv ("ÍTEMS SELECCIONADOS",items_str ,wrap =True ))
+            col2 .addWidget (self ._kv ("PESO USADO",f"{d .get ('peso_usado',0 )} / {d .get ('capacidad',0 )}"))
+        elif "usados"in d :
+            vals =d .get ("valores",[])
+            items_str =", ".join (f"I{int (k )+1 }×{v }"for k ,v in d ["usados"].items ())or "(ninguno)"
+            col2 .addWidget (self ._kv ("COMBINACIÓN",items_str ,wrap =True ))
+        elif "camino"in d and d .get ("camino"):
+            col2 .addWidget (self ._kv ("CAMINO"," → ".join (str (x )for x in d ["camino"])))
+        lay .addLayout (col2 )
+
+        lay .addStretch ()
+
+
+        factible =d .get ("factible",False )
+        badge =QLabel ("ÓPTIMO"if factible else "NO FACTIBLE")
+        badge .setStyleSheet (
+        f"color:{C ['accent3']if factible else C ['accent4']};"
+        f"background:{'rgba(0,230,118,30)'if factible else 'rgba(255,107,107,30)'};"
+        f"border:1px solid {'rgba(0,230,118,60)'if factible else 'rgba(255,107,107,60)'};"
+        f"border-radius:2px; padding:2px 10px; font-size:10px; letter-spacing:1px;"
+        )
+        lay .addWidget (badge ,alignment =Qt .AlignmentFlag .AlignTop )
+        return frame 
+
+    def _kv (self ,key :str ,val :str ,wrap =False )->QWidget :
+        w =QWidget ()
+        lay =QVBoxLayout (w );lay .setContentsMargins (0 ,0 ,0 ,0 );lay .setSpacing (2 )
+        lk =QLabel (key )
+        lk .setStyleSheet (f"color:{C ['text_s']}; font-size:9px; letter-spacing:2px;")
+        lv =QLabel (val )
+        lv .setStyleSheet (f"color:{C ['text_p']}; font-family:'Courier New',monospace; font-size:11px;")
+        if wrap :
+            lv .setWordWrap (True )
+        lay .addWidget (lk );lay .addWidget (lv )
+        return w 
+
+    def _build_dp_table (self ,d :dict )->QTableWidget :
+        dp =d ["dp"]
+        filas =d ["filas"]
+        columnas =d ["columnas"]
+        path =d .get ("path",set ())
+        dim =d .get ("dim","2d")
+
+        if dim =="2d":
+            cells =dp 
+            opt =(len (dp )-1 ,len (dp [-1 ])-1 )
+        else :
+            cells =[dp ]
+            opt =(0 ,len (dp )-1 )
+            path ={(0 ,c )for c in path }if isinstance (next (iter (path ),None ),int )else path 
+
+        return self ._make_table (columnas ,filas ,cells ,path =path ,opt_cell =opt )
+
+    def _build_pasos (self ,pasos :list )->QTableWidget :
+        tbl =QTableWidget (len (pasos ),4 )
+        tbl .setHorizontalHeaderLabels (["Etapa","Estado","Valor","Decisión"])
+        tbl .horizontalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .Stretch )
+        tbl .verticalHeader ().setVisible (False )
+        colors =[C ["accent2"],C ["accent"],C ["accent3"],C ["text_m"]]
+        for r ,p in enumerate (pasos ):
+            for c ,(key ,col )in enumerate (zip (["etapa","estado","valor","decision"],colors )):
+                item =QTableWidgetItem (str (p .get (key ,"")))
+                item .setForeground (QColor (col ))
+                item .setFlags (Qt .ItemFlag .ItemIsEnabled |Qt .ItemFlag .ItemIsSelectable )
+                tbl .setItem (r ,c ,item )
+        tbl .setFixedHeight (min (len (pasos )*24 +34 ,200 ))
+        return tbl 
+
+    def _build_detalle (self ,d :dict ):
+        if "seleccionados"in d and d .get ("seleccionados"):
+            sel =d ["seleccionados"]
+            vals ,pesos =d ["valores"],d ["pesos"]
+            tbl =QTableWidget (len (sel ),4 )
+            tbl .setHorizontalHeaderLabels (["Ítem","Valor","Peso","Σ Valor"])
+            tbl .horizontalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .Stretch )
+            tbl .verticalHeader ().setVisible (False )
+            acum =0 
+            for r ,i in enumerate (sel ):
+                acum +=vals [i ]
+                data =[(f"I{i +1 }",C ["accent2"]),(f"+{vals [i ]}",C ["accent"]),
+                (str (pesos [i ]),C ["text_s"]),(f"= {acum }",C ["accent3"])]
+                for c ,(txt ,col )in enumerate (data ):
+                    item =QTableWidgetItem (txt )
+                    item .setForeground (QColor (col ))
+                    item .setFlags (Qt .ItemFlag .ItemIsEnabled |Qt .ItemFlag .ItemIsSelectable )
+                    tbl .setItem (r ,c ,item )
+            tbl .setFixedHeight (min (len (sel )*24 +34 ,180 ))
+            return tbl 
+
+        elif "usados"in d and d .get ("usados"):
+            rows =list (d ["usados"].items ())
+            vals ,pesos =d ["valores"],d ["pesos"]
+            tbl =QTableWidget (len (rows ),4 )
+            tbl .setHorizontalHeaderLabels (["Ítem","Veces","Valor×n","Peso×n"])
+            tbl .horizontalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .Stretch )
+            tbl .verticalHeader ().setVisible (False )
+            for r ,(k ,cnt )in enumerate (rows ):
+                i =int (k )
+                data =[(f"I{i +1 }",C ["accent2"]),(f"×{cnt }",C ["accent"]),
+                (str (vals [i ]*cnt ),C ["accent3"]),(str (pesos [i ]*cnt ),C ["text_s"])]
+                for c ,(txt ,col )in enumerate (data ):
+                    item =QTableWidgetItem (txt )
+                    item .setForeground (QColor (col ))
+                    item .setFlags (Qt .ItemFlag .ItemIsEnabled |Qt .ItemFlag .ItemIsSelectable )
+                    tbl .setItem (r ,c ,item )
+            tbl .setFixedHeight (min (len (rows )*24 +34 ,180 ))
+            return tbl 
+
+        return None 
+
+
+
+
+
+
+class VentanaPrincipal (QMainWindow ):
+    """
+    Orquesta Vista (widgets) y Modelo (ModeloPD).
+    Responsabilidades:
+      - Construir la UI
+      - Leer parámetros de los widgets
+      - Llamar al método correcto del Modelo
+      - Pasar el resultado al PanelResultados
+    """
+
+    def __init__ (self ):
+        super ().__init__ ()
+        self .setWindowTitle ("Programación Dinámica — Investigación de Operaciones")
+        self .setMinimumSize (1050 ,660 )
+        self .resize (1280 ,740 )
+
+
+        self ._item_tbl :ItemTableWidget |None =None 
+        self ._mat_wgt :MatrizWidget |None =None 
+
+        central =QWidget ()
+        self .setCentralWidget (central )
+        root =QVBoxLayout (central )
+        root .setContentsMargins (0 ,0 ,0 ,0 )
+        root .setSpacing (0 )
+
+        root .addWidget (self ._build_header ())
+
+        splitter =QSplitter (Qt .Orientation .Horizontal )
+        splitter .addWidget (self ._build_sidebar ())
+        self ._result_panel =PanelResultados ()
+        splitter .addWidget (self ._result_panel )
+        splitter .setSizes ([290 ,990 ])
+        splitter .setHandleWidth (1 )
+        root .addWidget (splitter )
+
+        self ._generar_campos ()
+
+
+    def _build_header (self )->QFrame :
+        frame =QFrame ();frame .setObjectName ("hdr_frame")
+        lay =QVBoxLayout (frame )
+        lay .setContentsMargins (0 ,8 ,0 ,7 )
+        lay .setSpacing (2 )
+
+        t =QLabel ("PROGRAMACIÓN DINÁMICA")
+        t .setAlignment (Qt .AlignmentFlag .AlignCenter )
+        t .setStyleSheet (f"color:{C ['accent']}; font-size:14px; font-weight:bold; letter-spacing:5px;")
+        s =QLabel ("INVESTIGACIÓN DE OPERACIONES  —  MVC  PyQt6")
+        s .setAlignment (Qt .AlignmentFlag .AlignCenter )
+        s .setStyleSheet (f"color:{C ['text_s']}; font-size:9px; letter-spacing:3px;")
+
+        lay .addWidget (t );lay .addWidget (s )
+        return frame 
+
+
+    def _build_sidebar (self )->QFrame :
+        frame =QFrame ();frame .setObjectName ("sidebar_frame")
+        frame .setFixedWidth (290 )
+
+        outer =QVBoxLayout (frame )
+        outer .setContentsMargins (0 ,0 ,0 ,0 )
+        outer .setSpacing (0 )
+
+
+        scroll =QScrollArea ()
+        scroll .setWidgetResizable (True )
+        scroll .setFrameShape (QFrame .Shape .NoFrame )
+        inner_w =QWidget ()
+        ilay =QVBoxLayout (inner_w )
+        ilay .setContentsMargins (10 ,8 ,10 ,8 )
+        ilay .setSpacing (8 )
+        scroll .setWidget (inner_w )
+        outer .addWidget (scroll )
+
+
+        grp_cfg =QGroupBox ("Configuración")
+        gl =QGridLayout (grp_cfg );gl .setSpacing (7 )
+
+        gl .addWidget (QLabel ("Tipo:"),0 ,0 )
+        self ._cmb_tipo =QComboBox ()
+        self ._cmb_tipo .addItems (["Maximizar","Minimizar"])
+        gl .addWidget (self ._cmb_tipo ,0 ,1 )
+
+        gl .addWidget (QLabel ("Algoritmo:"),1 ,0 )
+        self ._cmb_algo =QComboBox ()
+        self ._cmb_algo .addItems ([
+        "Mochila 0/1",
+        "Mochila Ilimitada",
+        "Tabla Personalizada",
+        "Camino en DAG",
+        ])
+        self ._cmb_algo .currentIndexChanged .connect (self ._on_algo_change )
+        gl .addWidget (self ._cmb_algo ,1 ,1 )
+
+        self ._lbl_n =QLabel ("Nº Ítems / Etapas:")
+        gl .addWidget (self ._lbl_n ,2 ,0 )
+        self ._spn_n =QSpinBox ();self ._spn_n .setRange (1 ,12 );self ._spn_n .setValue (4 )
+        gl .addWidget (self ._spn_n ,2 ,1 )
+
+        self ._lbl_w =QLabel ("Capacidad / W:")
+        gl .addWidget (self ._lbl_w ,3 ,0 )
+        self ._spn_w =QSpinBox ();self ._spn_w .setRange (1 ,50 );self ._spn_w .setValue (8 )
+        gl .addWidget (self ._spn_w ,3 ,1 )
+
+        btn_gen =QPushButton ("Generar campos");btn_gen .setObjectName ("btn_gen")
+        btn_gen .clicked .connect (self ._generar_campos )
+        gl .addWidget (btn_gen ,4 ,0 ,1 ,2 )
+        ilay .addWidget (grp_cfg )
+
+
+        self ._grp_dat =QGroupBox ("Función Objetivo / Datos")
+        self ._dat_lay =QVBoxLayout (self ._grp_dat )
+        self ._dat_lay .setContentsMargins (8 ,10 ,8 ,8 )
+        self ._dat_lay .setSpacing (6 )
+        ilay .addWidget (self ._grp_dat )
+
+
+        self ._grp_dag =QGroupBox ("Parámetros DAG")
+        dgl =QGridLayout (self ._grp_dag );dgl .setSpacing (6 )
+
+        dgl .addWidget (QLabel ("Nº Nodos:"),0 ,0 )
+        self ._spn_dag_n =QSpinBox ();self ._spn_dag_n .setRange (2 ,50 );self ._spn_dag_n .setValue (5 )
+        dgl .addWidget (self ._spn_dag_n ,0 ,1 )
+
+        dgl .addWidget (QLabel ("Origen:"),1 ,0 )
+        self ._spn_orig =QSpinBox ();self ._spn_orig .setRange (0 ,49 );self ._spn_orig .setValue (0 )
+        dgl .addWidget (self ._spn_orig ,1 ,1 )
+
+        dgl .addWidget (QLabel ("Destino:"),2 ,0 )
+        self ._spn_dest =QSpinBox ();self ._spn_dest .setRange (0 ,49 );self ._spn_dest .setValue (4 )
+        dgl .addWidget (self ._spn_dest ,2 ,1 )
+
+        dgl .addWidget (QLabel ("Aristas\n(de a peso):"),3 ,0 ,Qt .AlignmentFlag .AlignTop )
+        self ._txt_aristas =QTextEdit ()
+        self ._txt_aristas .setPlainText ("0 1 5\n0 2 3\n1 3 6\n1 2 2\n2 4 4\n3 4 3\n2 3 1")
+        self ._txt_aristas .setFixedHeight (110 )
+        dgl .addWidget (self ._txt_aristas ,3 ,1 )
+        ilay .addWidget (self ._grp_dag )
+        self ._grp_dag .setVisible (False )
+
+        ilay .addStretch ()
+
+
+        btn_bar =QWidget ()
+        btn_bar .setStyleSheet (f"background:{C ['bg_panel']}; border-top:1px solid {C ['border']};")
+        blay =QHBoxLayout (btn_bar )
+        blay .setContentsMargins (10 ,8 ,10 ,10 )
+        blay .setSpacing (8 )
+
+        btn_clear =QPushButton ("↺  Limpiar");btn_clear .setObjectName ("btn_clear")
+        btn_clear .clicked .connect (self ._limpiar )
+        self ._btn_solve =QPushButton ("▶  Resolver");self ._btn_solve .setObjectName ("btn_solve")
+        self ._btn_solve .clicked .connect (self ._resolver )
+
+        blay .addWidget (btn_clear )
+        blay .addWidget (self ._btn_solve )
+        outer .addWidget (btn_bar )
+
+        return frame 
+
+
+    def _on_algo_change (self ):
+        idx =self ._cmb_algo .currentIndex ()
+        is_dag =(idx ==3 )
+        self ._lbl_n .setVisible (not is_dag )
+        self ._spn_n .setVisible (not is_dag )
+        self ._lbl_w .setVisible (not is_dag )
+        self ._spn_w .setVisible (not is_dag )
+        self ._grp_dag .setVisible (is_dag )
+        self ._generar_campos ()
+
+    def _generar_campos (self ):
+        """Reconstruye los widgets de entrada según el algoritmo seleccionado."""
+
+        while self ._dat_lay .count ():
+            item =self ._dat_lay .takeAt (0 )
+            if item .widget ():
+                item .widget ().deleteLater ()
+        self ._item_tbl =None 
+        self ._mat_wgt =None 
+
+        algo =self ._cmb_algo .currentIndex ()
+        n =self ._spn_n .value ()
+        W =self ._spn_w .value ()
+
+        if algo in (0 ,1 ):
+            lbl =QLabel ("Ingrese el valor y peso de cada ítem:")
+            lbl .setStyleSheet (f"color:{C ['text_m']}; font-size:9px; font-family:'Courier New';")
+            self ._dat_lay .addWidget (lbl )
+            self ._item_tbl =ItemTableWidget (n )
+            self ._dat_lay .addWidget (self ._item_tbl )
+
+        elif algo ==2 :
+            lbl =QLabel (f"Retornos r[etapa][estado]  ({n } × {W +1 }):")
+            lbl .setStyleSheet (f"color:{C ['text_m']}; font-size:9px; font-family:'Courier New';")
+            self ._dat_lay .addWidget (lbl )
+            self ._mat_wgt =MatrizWidget (n ,W +1 )
+            self ._dat_lay .addWidget (self ._mat_wgt )
+
+        else :
+            info =QLabel ("Configure nodos y aristas\nen el grupo 'Parámetros DAG'.")
+            info .setStyleSheet (f"color:{C ['text_s']}; font-size:11px;")
+            self ._dat_lay .addWidget (info )
+
+    def _resolver (self ):
+        """Lee la Vista, invoca el Modelo y actualiza el PanelResultados."""
+        tipo ="max"if self ._cmb_tipo .currentIndex ()==0 else "min"
+        algo =self ._cmb_algo .currentIndex ()
+        n =self ._spn_n .value ()
+        W =self ._spn_w .value ()
+
+        try :
+            if algo ==0 :
+                if self ._item_tbl is None :
+                    raise ValueError ("Genere los campos primero.")
+                vals ,pesos =self ._item_tbl .get_data ()
+                resultado =ModeloPD .mochila_01 (vals ,pesos ,W ,tipo )
+
+            elif algo ==1 :
+                if self ._item_tbl is None :
+                    raise ValueError ("Genere los campos primero.")
+                vals ,pesos =self ._item_tbl .get_data ()
+                resultado =ModeloPD .mochila_ilimitada (vals ,pesos ,W ,tipo )
+
+            elif algo ==2 :
+                if self ._mat_wgt is None :
+                    raise ValueError ("Genere los campos primero.")
+                matriz =self ._mat_wgt .get_data ()
+                resultado =ModeloPD .tabla_personalizada (matriz ,tipo )
+
+            else :
+                n_nodos =self ._spn_dag_n .value ()
+                origen =self ._spn_orig .value ()
+                destino =self ._spn_dest .value ()
+                lineas =self ._txt_aristas .toPlainText ().strip ().split ("\n")
+                aristas =[]
+                for linea in lineas :
+                    parts =linea .strip ().split ()
+                    if len (parts )>=3 :
+                        try :
+                            aristas .append ((int (parts [0 ]),int (parts [1 ]),int (parts [2 ])))
+                        except ValueError :
+                            pass 
+                if not aristas :
+                    raise ValueError ("Ingrese al menos una arista válida (formato: de a peso).")
+                resultado =ModeloPD .camino_dag (n_nodos ,aristas ,origen ,destino ,tipo )
+
+            if resultado .get ("error"):
+                self ._result_panel .mostrar_error (resultado ["error"])
+            else :
+                self ._result_panel .mostrar_resultado (resultado )
+
+        except Exception as exc :
+            self ._result_panel .mostrar_error (str (exc ))
+
+    def _limpiar (self ):
+        self ._result_panel .limpiar_pantalla ()
+
+
+
+
+
+
+def main ():
+    app =QApplication (sys .argv )
+    app .setApplicationName ("Programación Dinámica MVC")
+    app .setStyleSheet (QSS )
+    app .setFont (QFont ("Segoe UI",11 ))
+
+    ventana =VentanaPrincipal ()
+    ventana .show ()
+    sys .exit (app .exec ())
+
+
+if __name__ =="__main__":
+    main ()

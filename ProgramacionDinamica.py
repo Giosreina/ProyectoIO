@@ -11,9 +11,13 @@ from PyQt6 .QtGui import QFont ,QColor
 class ModeloPD :
 
     @staticmethod 
-    def mochila_01 (valores :list ,pesos :list ,W :int ,tipo :str )->dict :
+    def mochila_01 (valores :list ,pesos :list ,W :int ,tipo :str ,minimos :list =None )->dict :
         n =len (valores )
         INF =float ('inf')
+        
+        if minimos is None :
+            minimos =[0 ]*n
+        
         dp =[[0 ]*(W +1 )for _ in range (n +1 )]
         if tipo =='min':
             for i in range (n +1 ):
@@ -28,7 +32,7 @@ class ModeloPD :
             for w in range (W +1 ):
                 dp [i ][w ]=dp [i -1 ][w ]
                 decision ="no incluir"
-                if pi <=w :
+                if pi <=w and vi >=minimos [i -1 ]:
                     prev =dp [i -1 ][w -pi ]
                     if prev !=INF :
                         cand =prev +vi 
@@ -76,9 +80,10 @@ class ModeloPD :
         "pasos":pasos ,
         "factible":optimo !=INF ,
         "path":path ,
+        "minimos":minimos ,
         }
     @staticmethod 
-    def mochila_ilimitada (valores :list ,pesos :list ,W :int ,tipo :str )->dict :
+    def mochila_ilimitada (valores :list ,pesos :list ,W :int ,tipo :str ,minimos :list =None )->dict :
         """
         Ítems reutilizables sin límite.
         Recurrencia: dp[w] = max/min{ dp[w-p[i]] + v[i] }  ∀ i
@@ -86,13 +91,17 @@ class ModeloPD :
         """
         n =len (valores )
         INF =float ('inf')
+        
+        if minimos is None :
+            minimos =[0 ]*n
+        
         dp =[0 ]+([-INF if tipo =='max'else INF ]*W )
         desde =[-1 ]*(W +1 )
         pasos =[]
 
         for w in range (1 ,W +1 ):
             for i in range (n ):
-                if pesos [i ]<=w :
+                if pesos [i ]<=w and valores [i ]>=minimos [i ]:
                     prev =dp [w -pesos [i ]]
                     if abs (prev )==INF :
                         continue 
@@ -135,17 +144,22 @@ class ModeloPD :
         "pasos":pasos ,
         "factible":abs (optimo )!=INF ,
         "path":{W },
+        "minimos":minimos ,
         }
     @staticmethod 
-    def tabla_personalizada (matriz :list ,tipo :str )->dict :
+    def tabla_personalizada (matriz :list ,tipo :str ,minimos :list =None )->dict :
         """
         DP multi-etapa sobre retornos r[etapa][estado].
         Recurrencia: f[e][s] = max/min{ f[e-1][s'], r[e][s] }  ∀ s'≥s
+        Con restricción: valores en cada etapa deben cumplir mínimo.
         Complejidad: O(etapas · estados²)
         """
         etapas =len (matriz )
         estados =len (matriz [0 ])if etapas else 0 
         INF =float ('inf')
+        
+        if minimos is None :
+            minimos =[0 ]*etapas
 
         f =[[-INF if tipo =='max'else INF ]*estados for _ in range (etapas )]
         dec =[[-1 ]*estados for _ in range (etapas )]
@@ -154,9 +168,13 @@ class ModeloPD :
         inicio = estados - 1
         for s in range (estados ):
             f [0 ][s ] = -INF if tipo == 'max' else INF
-        f [0 ][inicio ] = matriz [0 ][inicio ]
+        if matriz [0 ][inicio ] >= minimos [0 ]:
+            f [0 ][inicio ] = matriz [0 ][inicio ]
+        
         for e in range (1 ,etapas ):
             for s in range (estados ):
+                if matriz [e ][s ] < minimos [e ]:
+                    continue 
                 for ps in range (s ,estados ):
                     if abs (f [e -1 ][ps ])==INF :
                         continue 
@@ -197,16 +215,21 @@ class ModeloPD :
         "pasos":pasos ,
         "factible":abs (optimo )!=INF ,
         "path":path ,
+        "minimos":minimos ,
         }
 
     @staticmethod 
-    def camino_dag (n_nodos :int ,aristas :list ,origen :int ,destino :int ,tipo :str )->dict :
+    def camino_dag (n_nodos :int ,aristas :list ,origen :int ,destino :int ,tipo :str ,minimos :list =None )->dict :
         """
         Camino óptimo en grafo acíclico dirigido.
         Recurrencia: dist[v] = min/max{ dist[u] + w(u,v) }
         Complejidad: O(V + E)
         """
         INF =float ('inf')
+        
+        if minimos is None :
+            minimos =[0 ]*n_nodos
+        
         adj ={i :[]for i in range (n_nodos )}
         in_deg =[0 ]*n_nodos 
         for de ,a ,w in aristas :
@@ -236,6 +259,8 @@ class ModeloPD :
             if abs (dist [u ])==INF :
                 continue 
             for v ,w in adj [u ]:
+                if minimos [v ]>0 and w <minimos [v ]:
+                    continue 
                 cand =dist [u ]+w 
                 if tipo =='max'and cand >dist [v ]:
                     dist [v ]=cand 
@@ -273,6 +298,7 @@ class ModeloPD :
         "pasos":pasos ,
         "factible":abs (optimo )!=INF ,
         "path":set (camino )if camino else set (),
+        "minimos":minimos ,
         }
 
 
@@ -465,12 +491,21 @@ class ItemTableWidget (QWidget ):
         super ().__init__ (parent )
         lay =QVBoxLayout (self )
         lay .setContentsMargins (0 ,0 ,0 ,0 )
+        lay .setSpacing (6 )
         self ._tbl =QTableWidget ()
         self ._tbl .setColumnCount (3 )
         self ._tbl .setHorizontalHeaderLabels (["Ítem","Valor","Peso"])
         self ._tbl .horizontalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .Stretch )
         self ._tbl .verticalHeader ().setVisible (False )
         lay .addWidget (self ._tbl )
+        
+        lbl_min = QLabel ("Valor mínimo por ítem:")
+        lbl_min .setStyleSheet (f"color:{C ['text_m']}; font-size:9px; font-family:'Courier New';")
+        lay .addWidget (lbl_min )
+        self ._tbl_min =QTableWidget ()
+        self ._tbl_min .setMaximumHeight (50 )
+        lay .addWidget (self ._tbl_min )
+        
         self .rebuild (n )
 
     def rebuild (self ,n :int ):
@@ -484,6 +519,14 @@ class ItemTableWidget (QWidget ):
             self ._tbl .setItem (i ,2 ,QTableWidgetItem (str (self ._DEF_P [i ]if i <len (self ._DEF_P )else 1 )))
         h =min (n *27 +32 ,260 )
         self ._tbl .setFixedHeight (h )
+        
+        self ._tbl_min .setRowCount (1 )
+        self ._tbl_min .setColumnCount (n )
+        self ._tbl_min .setHorizontalHeaderLabels ([f"I{i +1 }"for i in range (n )])
+        self ._tbl_min .verticalHeader ().setVisible (False )
+        self ._tbl_min .horizontalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .ResizeToContents )
+        for i in range (n ):
+            self ._tbl_min .setItem (0 ,i ,QTableWidgetItem ("0"))
 
     def get_data (self )->tuple :
         n =self ._tbl .rowCount ()
@@ -493,7 +536,12 @@ class ItemTableWidget (QWidget ):
             pt =self ._tbl .item (i ,2 )
             vals .append (int (vt .text ())if vt and vt .text ().lstrip ('-').isdigit ()else 1 )
             pesos .append (max (1 ,int (pt .text ()))if pt and pt .text ().lstrip ('-').isdigit ()else 1 )
-        return vals ,pesos 
+        minimos = [
+            int (self ._tbl_min .item (0 ,i ).text ())
+            if self ._tbl_min .item (0 ,i )and self ._tbl_min .item (0 ,i ).text ().lstrip ('-').isdigit ()else 0 
+            for i in range (self ._tbl_min .columnCount ())
+        ]
+        return vals ,pesos ,minimos 
 
 
 class MatrizWidget (QWidget ):
@@ -503,8 +551,17 @@ class MatrizWidget (QWidget ):
         super ().__init__ (parent )
         lay =QVBoxLayout (self )
         lay .setContentsMargins (0 ,0 ,0 ,0 )
+        lay .setSpacing (6 )
         self ._tbl =QTableWidget ()
         lay .addWidget (self ._tbl )
+        
+        lbl_min = QLabel ("Valor mínimo por etapa:")
+        lbl_min .setStyleSheet (f"color:{C ['text_m']}; font-size:9px; font-family:'Courier New';")
+        lay .addWidget (lbl_min )
+        self ._tbl_min =QTableWidget ()
+        self ._tbl_min .setMaximumHeight (50 )
+        lay .addWidget (self ._tbl_min )
+        
         self .rebuild (etapas ,estados )
 
     def rebuild (self ,etapas :int ,estados :int ):
@@ -519,15 +576,29 @@ class MatrizWidget (QWidget ):
                 self ._tbl .setItem (e ,s ,QTableWidgetItem (str (random .randint (1 ,9 ))))
         h =min (etapas *27 +32 ,200 )
         self ._tbl .setFixedHeight (h )
+        
+        self ._tbl_min .setRowCount (1 )
+        self ._tbl_min .setColumnCount (etapas )
+        self ._tbl_min .setHorizontalHeaderLabels ([f"E{e +1 }"for e in range (etapas )])
+        self ._tbl_min .verticalHeader ().setVisible (False )
+        self ._tbl_min .horizontalHeader ().setSectionResizeMode (QHeaderView .ResizeMode .Stretch )
+        for e in range (etapas ):
+            self ._tbl_min .setItem (0 ,e ,QTableWidgetItem ("0"))
 
-    def get_data (self )->list :
+    def get_data (self )->tuple :
         rows ,cols =self ._tbl .rowCount (),self ._tbl .columnCount ()
-        return [
+        matriz = [
         [int (self ._tbl .item (r ,c ).text ())
         if self ._tbl .item (r ,c )and self ._tbl .item (r ,c ).text ().lstrip ('-').isdigit ()else 0 
         for c in range (cols )]
         for r in range (rows )
         ]
+        minimos = [
+            int (self ._tbl_min .item (0 ,e ).text ())
+            if self ._tbl_min .item (0 ,e )and self ._tbl_min .item (0 ,e ).text ().lstrip ('-').isdigit ()else 0 
+            for e in range (self ._tbl_min .columnCount ())
+        ]
+        return matriz ,minimos 
 
 
 class PanelResultados (QWidget ):
@@ -1042,20 +1113,20 @@ class VentanaPrincipal (QMainWindow ):
             if algo ==0 :
                 if self ._item_tbl is None :
                     raise ValueError ("Genere los campos primero.")
-                vals ,pesos =self ._item_tbl .get_data ()
-                resultado =ModeloPD .mochila_01 (vals ,pesos ,W ,tipo )
+                vals ,pesos ,minimos =self ._item_tbl .get_data ()
+                resultado =ModeloPD .mochila_01 (vals ,pesos ,W ,tipo ,minimos )
 
             elif algo ==1 :
                 if self ._item_tbl is None :
                     raise ValueError ("Genere los campos primero.")
-                vals ,pesos =self ._item_tbl .get_data ()
-                resultado =ModeloPD .mochila_ilimitada (vals ,pesos ,W ,tipo )
+                vals ,pesos ,minimos =self ._item_tbl .get_data ()
+                resultado =ModeloPD .mochila_ilimitada (vals ,pesos ,W ,tipo ,minimos )
 
             elif algo ==2 :
                 if self ._mat_wgt is None :
                     raise ValueError ("Genere los campos primero.")
-                matriz =self ._mat_wgt .get_data ()
-                resultado =ModeloPD .tabla_personalizada (matriz ,tipo )
+                matriz ,minimos =self ._mat_wgt .get_data ()
+                resultado =ModeloPD .tabla_personalizada (matriz ,tipo ,minimos )
 
             else :
                 n_nodos =self ._spn_dag_n .value ()

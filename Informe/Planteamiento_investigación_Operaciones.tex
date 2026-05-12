@@ -3,62 +3,126 @@
 \usepackage[spanish]{babel}
 \usepackage{amsmath}
 \usepackage{geometry}
-\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{titlesec}
+\usepackage{colortbl}
 
-\geometry{a4paper, margin=1in}
+% Configuración de colores (basados en las imágenes)
+\definecolor{darkblue}{HTML}{1A4371}
+\definecolor{lightblue}{HTML}{F1F4F8}
+\definecolor{tableheader}{HTML}{E2E9F3}
+\definecolor{formulaback}{HTML}{F8F9FA}
 
-\title{Propuesta de Proyecto: Optimización de Logística y Distribución}
-\author{Investigación de Operaciones}
-\date{\today}
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+
+% Estilo de títulos
+\titleformat{\section}
+  {\color{darkblue}\normalfont\Large\bfseries}{\thesection.}{1em}{}[{\titlerule[1.5pt]}]
+
+% Estilo de las barras laterales (Definiciones, Función Objetivo, etc.)
+\newtcolorbox{accentbar}{
+  sharp corners,
+  boxrule=0pt,
+  leftrule=4pt,
+  colback=white,
+  colframe=darkblue,
+  left=10pt,
+  top=0pt,
+  bottom=0pt,
+  fontupper=\color{darkblue}\bfseries\large
+}
+
+% Estilo de las cajas de fórmulas
+\newtcolorbox{mathbox}{
+  colback=formulaback,
+  colframe=gray!20,
+  arc=4pt,
+  halign=center,
+  boxrule=0.5pt,
+  top=15pt,
+  bottom=15pt
+}
 
 \begin{document}
 
-\maketitle
+\begin{center}
+    \Huge \textbf{\color{darkblue} PROPUESTA DE PROYECTO: OPTIMIZACIÓN DE LOGÍSTICA Y DISTRIBUCIÓN}
+\end{center}
+
+\vspace{1cm}
 
 \section{Contexto del Problema}
-En el entorno competitivo de la logística urbana, la eficiencia en la ``última milla'' es crucial. La empresa \textbf{Logística Distrital S.A.} debe distribuir suministros tecnológicos en Bogotá (Usaquén, Chapinero y Kennedy). Se requiere un modelo que optimice la asignación de flota vehicular para cumplir con las entregas mínimas minimizando los costos operativos.
+En el entorno competitivo de la logística urbana, la eficiencia en la "última milla" es crucial para la sostenibilidad financiera y la satisfacción del cliente. La empresa \textbf{Logística Distrital S.A.} enfrenta el reto de distribuir suministros tecnológicos críticos en la ciudad de Bogotá, específicamente en las localidades de Usaquén, Chapinero y Kennedy. 
+
+El problema radica en que la demanda de entregas suele superar la capacidad inmediata, y los tiempos de desplazamiento varían significativamente debido a la infraestructura vial. Se requiere un modelo que permita tomar decisiones informadas sobre la asignación de la flota vehicular para cumplir con compromisos contractuales de entrega mínima mientras se minimizan los costos operativos representados por el tiempo en ruta.
 
 \section{Planteamiento del Problema}
-Se cuenta con una flota de $10$ camiones. El objetivo es determinar la asignación óptima de vehículos ($x_i$) para tres zonas con diferentes requerimientos:
+Se deben distribuir paquetes utilizando una flota limitada de \textbf{10 camiones}. La operación se divide en tres zonas principales con características distintas de tiempo y capacidad de entrega. El objetivo principal es determinar la asignación óptima de vehículos que minimice el tiempo total de operación o maximice el beneficio de entregas, garantizando el cumplimiento de las metas mínimas por zona.
 
-\begin{table}[h]
-\centering
-\begin{tabular}{@{}ccccc@{}}
-\toprule
-\textbf{Zona ($i$)} & \textbf{Nombre} & \textbf{Tiempo ($t_i$)} & \textbf{Paquetes ($p_i$)} & \textbf{Demanda ($d_i$)} \\ \midrule
-1 & Usaquén & 60 min & 15 & 45 \\
-2 & Chapinero & 45 min & 10 & 30 \\
-3 & Kennedy & 90 min & 20 & 60 \\ \bottomrule
-\end{tabular}
-\end{table}
+\vspace{0.5cm}
+{\rowcolors{2}{lightblue}{lightblue}
+\begin{tabular}{|l|l|c|c|c|}
+\hline
+\rowcolor{tableheader} \textbf{\color{darkblue}Zona (i)} & \textbf{\color{darkblue}Nombre} & \textbf{\color{darkblue}Tiempo ($t_i$)} & \textbf{\color{darkblue}Paquetes ($p_i$)} & \textbf{\color{darkblue}Demanda ($d_i$)} \\ \hline
+1 & Usaquén & 60 min & 15 & 45 \\ \hline
+2 & Chapinero & 45 min & 10 & 30 \\ \hline
+3 & Kennedy & 90 min & 20 & 60 \\ \hline
+\end{tabular}}
+
+\newpage
 
 \section{Modelo Matemático: Método de la Gran M}
-\subsection{Variables de Decisión}
+Este modelo busca la optimización global bajo restricciones de desigualdad.
+
+\begin{accentbar}
+Variables de Decisión
+\end{accentbar}
 \begin{itemize}
-    \item $x_i$: Vehículos asignados a la zona $i$.
-    \item $a_i$: Variables artificiales de penalización.
+    \item $x_{i}$: Número de vehículos asignados a la zona $i$ ($i=1,2,3$).
+    \item $a_{i}$: Variables artificiales para penalizar el incumplimiento de la demanda mínima.
 \end{itemize}
 
-\subsection{Función Objetivo}
-\[ \text{Min } Z = 60x_1 + 45x_2 + 90x_3 + M(a_1 + a_2 + a_3) \]
+\begin{accentbar}
+Función Objetivo
+\end{accentbar}
+\begin{mathbox}
+    \large \textbf{Min } $Z = 60x_{1} + 45x_{2} + 90x_{3} + M(a_{1} + a_{2} + a_{3})$
+\end{mathbox}
 
-\subsection{Restricciones}
-\begin{align}
-    x_1 + x_2 + x_3 &\le 10 \quad \text{(Flota)} \\
-    15x_1 + a_1 &\ge 45 \quad \text{(Demanda 1)} \\
-    10x_2 + a_2 &\ge 30 \quad \text{(Demanda 2)} \\
-    20x_3 + a_3 &\ge 60 \quad \text{(Demanda 3)} \\
-    x_i, a_i &\ge 0
-\end{align}
+\begin{accentbar}
+Restricciones
+\end{accentbar}
+\begin{enumerate}
+    \item Disponibilidad de flota: $x_{1} + x_{2} + x_{3} \le 10$
+    \item Demanda Zona 1: $15x_{1} + a_{1} \ge 45$
+    \item Demanda Zona 2: $10x_{2} + a_{2} \ge 30$
+    \item Demanda Zona 3: $20x_{3} + a_{3} \ge 60$
+    \item No negatividad: $x_{i}, a_{i} \ge 0$
+\end{enumerate}
 
 \section{Modelo Matemático: Programación Dinámica}
+
+\begin{accentbar}
+Definiciones
+\end{accentbar}
 \begin{itemize}
-    \item \textbf{Etapa ($n$):} Zonas 1, 2 y 3.
-    \item \textbf{Estado ($s_n$):} Vehículos disponibles para la etapa $n$.
-    \item \textbf{Decisión ($x_n$):} Vehículos asignados a la zona $n$.
+    \item \textbf{Etapa (n):} Representa cada zona a la que se le asignarán recursos.
+    \item \textbf{Estado ($s_{n}$):} Número de vehículos disponibles para la etapa $n$ y posteriores.
+    \item \textbf{Decisión ($x_{n}$):} Vehículos asignados específicamente a la zona $n$.
 \end{itemize}
 
-\subsection{Ecuación de Recurrencia}
-\[ f_n(s_n) = \max_{0 \le x_n \le s_n} \{ p_n(x_n) + f_{n+1}(s_n - x_n) \} \]
+\begin{accentbar}
+Ecuación de Recurrencia
+\end{accentbar}
+Para maximizar el beneficio total (paquetes entregados):
+\begin{mathbox}
+    $f_{n}(s_{n}) = \max \{ p_{n}(x_{n}) + f_{n+1}(s_{n} - x_{n}) \}$
+\end{mathbox}
+
+Sujeto a:
+\begin{mathbox}
+    $0 \le x_{n} \le s_{n}$
+\end{mathbox}
 
 \end{document}

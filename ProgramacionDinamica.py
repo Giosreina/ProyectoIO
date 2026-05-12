@@ -945,16 +945,13 @@ class VentanaPrincipal (QMainWindow ):
         frame =QFrame ();frame .setObjectName ("hdr_frame")
         lay =QVBoxLayout (frame )
         lay .setContentsMargins (0 ,8 ,0 ,7 )
-        lay .setSpacing (2 )
+        lay .setSpacing (1)
 
         t =QLabel ("PROGRAMACIÓN DINÁMICA")
         t .setAlignment (Qt .AlignmentFlag .AlignCenter )
         t .setStyleSheet (f"color:{C ['accent']}; font-size:14px; font-weight:bold; letter-spacing:5px;")
-        s =QLabel ("INVESTIGACIÓN DE OPERACIONES  —  MVC  PyQt6")
-        s .setAlignment (Qt .AlignmentFlag .AlignCenter )
-        s .setStyleSheet (f"color:{C ['text_s']}; font-size:9px; letter-spacing:3px;")
 
-        lay .addWidget (t );lay .addWidget (s )
+        lay .addWidget (t );
         return frame 
 
 

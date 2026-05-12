@@ -151,7 +151,7 @@ class ModeloPD :
         """
         DP multi-etapa sobre retornos r[etapa][estado].
         Recurrencia: f[e][s] = max/min{ f[e-1][s'], r[e][s] }  ∀ s'≥s
-        Con restricción: valores en cada etapa deben cumplir mínimo.
+        Con restricción: camino debe cumplir f[e][s] >= minimos[e] en cada etapa.
         Complejidad: O(etapas · estados²)
         """
         etapas =len (matriz )
@@ -168,13 +168,10 @@ class ModeloPD :
         inicio = estados - 1
         for s in range (estados ):
             f [0 ][s ] = -INF if tipo == 'max' else INF
-        if matriz [0 ][inicio ] >= minimos [0 ]:
-            f [0 ][inicio ] = matriz [0 ][inicio ]
+        f [0 ][inicio ] = matriz [0 ][inicio ]
         
         for e in range (1 ,etapas ):
             for s in range (estados ):
-                if matriz [e ][s ] < minimos [e ]:
-                    continue 
                 for ps in range (s ,estados ):
                     if abs (f [e -1 ][ps ])==INF :
                         continue 
@@ -200,6 +197,14 @@ class ModeloPD :
             camino .insert (0 ,cur )
 
         optimo =f [etapas -1 ][mejor_f ]
+        
+        camino_factible =True
+        if minimos and any (m >0 for m in minimos ):
+            for e in range (etapas ):
+                if f [e ][camino [e ]]<minimos [e ]:
+                    camino_factible =False 
+                    break 
+        
         f_j =[[None if abs (x )==INF else x for x in r ]for r in f ]
         path =set ((e ,camino [e ])for e in range (etapas ))
 
@@ -207,13 +212,13 @@ class ModeloPD :
         "algoritmo":"Tabla Personalizada",
         "recurrencia":f"f[e][s] = {tipo }{{ f[e-1][s'], r[e][s] }}",
         "tipo":tipo ,
-        "optimo":None if abs (optimo )==INF else optimo ,
+        "optimo":None if abs (optimo )==INF or not camino_factible else optimo ,
         "camino":camino ,
         "dp":f_j ,"dim":"2d",
         "filas":[f"E{e +1 }"for e in range (etapas )],
         "columnas":[str (s )for s in range (estados )],
         "pasos":pasos ,
-        "factible":abs (optimo )!=INF ,
+        "factible":abs (optimo )!=INF and camino_factible ,
         "path":path ,
         "minimos":minimos ,
         }

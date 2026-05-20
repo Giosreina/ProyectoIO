@@ -495,5 +495,25 @@ El valor óptimo total de la función de beneficio, medido en paquetes entregado
 Ambos modelos coinciden en la asignación de 3 vehículos a Usaquén y Chapinero, lo que sugiere que esta distribución es robusta independientemente del criterio de optimización. La diferencia principal radica en la Zona Kennedy: cuando el objetivo es minimizar el tiempo, asignar un cuarto camión a Kennedy elevaría innecesariamente $Z$ sin mejorar el cumplimiento de demanda; cuando el objetivo es maximizar entregas, ese mismo camión produce el mayor beneficio marginal posible, de modo que su asignación a Kennedy es la decisión óptima.
 
 Este contraste ilustra cómo la elección del modelo matemático no es neutral: define qué se considera una solución mejor y, en consecuencia, qué decisión operativa se recomienda. Para \textbf{Logística Distrital S.A.}, el Método de la Gran M es adecuado cuando la prioridad es la eficiencia operativa en tiempo y costo de desplazamiento, mientras que la Programación Dinámica resulta más apropiada cuando se busca maximizar el volumen de servicio aprovechando la totalidad de los recursos disponibles.
+\section{Conclusiones}
+
+El desarrollo de este proyecto permitió modelar y resolver un problema real de logística urbana mediante dos enfoques matemáticos complementarios, evidenciando la utilidad práctica de la investigación de operaciones en la toma de decisiones empresariales.
+
+\begin{itemize}
+	\item \textbf{Viabilidad del problema:} ambos modelos confirmaron que es posible cubrir la demanda mínima de las tres zonas de Bogotá con la flota disponible de 10 camiones, lo que valida la factibilidad operativa de \textbf{Logística Distrital S.A.} bajo las condiciones contractuales establecidas.
 	
+	\item \textbf{Eficiencia vs. volumen:} el Método de la Gran M demostró que el tiempo total de operación se minimiza en 585 minutos empleando 9 vehículos, mientras que la Programación Dinámica maximizó las entregas hasta 155 paquetes utilizando los 10 camiones. Ningún enfoque es superior al otro en términos absolutos; la elección depende del criterio estratégico que la empresa priorice en cada escenario.
+	
+	\item \textbf{Robustez de la asignación base:} la coincidencia de ambos modelos en asignar 3 vehículos a Usaquén y 3 a Chapinero refuerza que esta distribución es estable y óptima bajo distintos criterios de optimización, lo que le otorga confiabilidad operativa para la planificación de rutas.
+	
+	\item \textbf{Zona Kennedy como variable crítica:} esta localidad concentra la mayor tensión del problema por su alto tiempo de viaje y su elevada capacidad de entrega por vehículo. Es la zona donde la decisión de asignación genera el mayor impacto diferencial entre modelos, y por tanto debe ser el foco principal del análisis en futuras revisiones de la flota.
+	
+	\item \textbf{Complementariedad de los algoritmos implementados:} \texttt{MetodoDeLaGranM.py} y \texttt{ProgramacionDinamica.py} no son soluciones excluyentes sino herramientas complementarias. El primero es adecuado para problemas continuos con restricciones lineales; el segundo, para decisiones discretas y secuenciales. La disponibilidad de ambos módulos le otorga al sistema la flexibilidad de adaptarse a distintas formulaciones del mismo problema.
+	
+	\item \textbf{Escalabilidad del enfoque:} los modelos desarrollados pueden extenderse a escenarios más complejos, como la incorporación de nuevas zonas, restricciones de ventanas de tiempo, variación dinámica de la demanda o costos diferenciados por tipo de vehículo, sin necesidad de reformular la arquitectura de software desde cero.
+\end{itemize}
+
+En síntesis, la aplicación conjunta de Programación Lineal y Programación Dinámica al problema de distribución de \textbf{Logística Distrital S.A.} no solo produce soluciones óptimas cuantificables, sino que también ofrece una base metodológica sólida para la toma de decisiones logísticas en entornos urbanos complejos como el de Bogotá.
+
+
 \end{document}

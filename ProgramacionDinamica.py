@@ -1,18 +1,3 @@
-#!/usr/bin/env python3
-"""
-╔══════════════════════════════════════════════════════════════════╗
-║   PROGRAMACIÓN DINÁMICA — APLICACIÓN DE ESCRITORIO PyQt6        ║
-║   Arquitectura MVC monolítica                                    ║
-║                                                                  ║
-║   MODELO      : Algoritmos de Programación Dinámica             ║
-║   VISTA       : UI PyQt6 (dark, estilo técnico)                 ║
-║   CONTROLADOR : Lógica de conexión entre Modelo y Vista         ║
-║                                                                  ║
-║   Requisito: pip install PyQt6                                   ║
-║   Uso: python programacion_dinamica_mvc.py                      ║
-╚══════════════════════════════════════════════════════════════════╝
-"""
-
 import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -23,11 +8,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor
 
-
-# ════════════════════════════════════════════════════════════════
-#  MODELO — Algoritmos de Programación Dinámica
-# ════════════════════════════════════════════════════════════════
-
 class ModeloPD:
     """
     Contiene todos los algoritmos de Programación Dinámica.
@@ -35,7 +15,6 @@ class ModeloPD:
     la tabla DP, la solución óptima y la traza de decisiones.
     """
 
-    # ── 1. Mochila 0/1 ───────────────────────────────────────────
     @staticmethod
     def mochila_01(valores: list, pesos: list, W: int, tipo: str,
                    minimos: list = None) -> dict:
@@ -116,7 +95,6 @@ class ModeloPD:
             "path": path,
         }
 
-    # ── 2. Mochila Ilimitada ─────────────────────────────────────
     @staticmethod
     def mochila_ilimitada(valores: list, pesos: list, W: int, tipo: str,
                           minimos: list = None) -> dict:
@@ -181,7 +159,6 @@ class ModeloPD:
             "path": {W},
         }
 
-    # ── 3. Tabla Personalizada (Asignación de Recursos) ──────────
     @staticmethod
     def tabla_personalizada(matriz: list, tipo: str,
                             min_x: list = None) -> dict:
@@ -209,13 +186,12 @@ class ModeloPD:
         Complejidad: O(etapas · W²)
         """
         etapas = len(matriz)
-        W = len(matriz[0]) - 1        # columnas: x = 0, 1, ..., W
+        W = len(matriz[0]) - 1
         INF = float('inf')
 
         if min_x is None:
             min_x = [0] * etapas
 
-        # Verificar que los mínimos son alcanzables
         total_min = sum(min_x)
         if total_min > W:
             return {
@@ -227,7 +203,6 @@ class ModeloPD:
         f   = [[mejor_init] * (W + 1) for _ in range(etapas)]
         dec = [[-1]         * (W + 1) for _ in range(etapas)]
 
-        # ── Etapa final ──────────────────────────────────────────
         e = etapas - 1
         lo = min_x[e]
         for s in range(W + 1):
@@ -240,7 +215,6 @@ class ModeloPD:
                     f[e][s] = val
                     dec[e][s] = x
 
-        # ── Etapas anteriores (de atrás hacia adelante) ──────────
         for e in range(etapas - 2, -1, -1):
             lo = min_x[e]
             for s in range(W + 1):
@@ -249,7 +223,7 @@ class ModeloPD:
                     fut = f[e + 1][s_rest]
                     if abs(fut) == INF:
                         continue
-                    cand = matriz[e][x] + fut   # ACUMULACIÓN CORRECTA
+                    cand = matriz[e][x] + fut
                     if tipo == 'max' and cand > f[e][s]:
                         f[e][s] = cand
                         dec[e][s] = x
@@ -257,13 +231,12 @@ class ModeloPD:
                         f[e][s] = cand
                         dec[e][s] = x
 
-        # ── Reconstruir asignaciones (traza hacia adelante) ──────
         optimo = f[0][W]
         factible = abs(optimo) != INF
 
         asignaciones = []
         pasos = []
-        camino = []   # recurso disponible al inicio de cada etapa
+        camino = []
         s_cur = W
         for e in range(etapas):
             camino.append(s_cur)
@@ -277,10 +250,8 @@ class ModeloPD:
             })
             s_cur -= x_opt
 
-        # Construir tabla DP para mostrar (filas=etapas, cols=0..W)
         f_j = [[None if abs(v) == INF else v for v in row] for row in f]
 
-        # Celdas del camino óptimo para colorear
         path = set()
         s_p = W
         for e in range(etapas):
@@ -304,7 +275,6 @@ class ModeloPD:
             "min_x":        min_x,
         }
 
-    # ── 4. Camino Óptimo en DAG ──────────────────────────────────
     @staticmethod
     def camino_dag(n_nodos: int, aristas: list, origen: int,
                    destino: int, tipo: str) -> dict:
@@ -377,11 +347,6 @@ class ModeloPD:
             "path": set(camino) if camino else set(),
         }
 
-
-# ════════════════════════════════════════════════════════════════
-#  PALETA  &  ESTILOS
-# ════════════════════════════════════════════════════════════════
-
 C = {
     "bg_deep":  "#090c10",
     "bg_panel": "#0e1219",
@@ -437,12 +402,12 @@ QPushButton {{
     font-size: 10px; font-weight: bold; letter-spacing: 2px;
 }}
 QPushButton:hover {{ border-color: {C['text_s']}; color: {C['text_p']}; }}
-QPushButton#btn_gen {{ border-color: {C['border_a']}; color: {C['accent']}; }}
-QPushButton#btn_gen:hover {{ background-color: rgba(0,170,255,60); border-color: {C['accent']}; }}
-QPushButton#btn_clear {{ border-color: {C['border']}; color: {C['text_s']}; }}
-QPushButton#btn_clear:hover {{ border-color: {C['text_s']}; color: {C['text_p']}; }}
-QPushButton#btn_solve {{ border-color: {C['accent']}; color: {C['accent']}; padding: 7px 20px; }}
-QPushButton#btn_solve:hover {{ background-color: rgba(0,170,255,40); }}
+QPushButton
+QPushButton
+QPushButton
+QPushButton
+QPushButton
+QPushButton
 QTableWidget {{
     background-color: {C['bg_card']}; border: 1px solid {C['border']};
     gridline-color: {C['border']}; color: {C['text_s']};
@@ -466,17 +431,12 @@ QScrollBar::handle:horizontal {{ background: {C['border_a']}; border-radius: 3px
 QScrollBar::handle:horizontal:hover {{ background: {C['accent']}; }}
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; border: none; }}
 QSplitter::handle {{ background: {C['border']}; }}
-QFrame#hdr_frame {{ background-color: {C['bg_panel']}; border-bottom: 1px solid {C['border_a']}; }}
-QFrame#sidebar_frame {{ background-color: {C['bg_panel']}; border-right: 1px solid {C['border']}; }}
-QFrame#card {{ background-color: {C['bg_card']}; border: 1px solid {C['border_a']}; border-radius: 4px; }}
-QFrame#card_info {{ background-color: {C['bg_card']}; border: 1px solid {C['border']};
+QFrame
+QFrame
+QFrame
+QFrame
     border-left: 2px solid {C['accent2']}; border-radius: 4px; }}
 """
-
-
-# ════════════════════════════════════════════════════════════════
-#  VISTA — Widgets de entrada
-# ════════════════════════════════════════════════════════════════
 
 class ItemTableWidget(QWidget):
     """Tabla editable: valor, peso y mínimo por ítem (mochilas)."""
@@ -540,7 +500,6 @@ class ItemTableWidget(QWidget):
         ]
         return vals, pesos, minimos
 
-
 class MatrizWidget(QWidget):
     """
     Tabla editable de retornos r[etapa][x_asignado] para Tabla Personalizada.
@@ -573,19 +532,17 @@ class MatrizWidget(QWidget):
         self.rebuild(etapas, W)
 
     def rebuild(self, etapas: int, W: int):
-        cols = W + 1   # columnas: x = 0, 1, ..., W
+        cols = W + 1
         self._tbl.setRowCount(etapas)
         self._tbl.setColumnCount(cols)
         self._tbl.setHorizontalHeaderLabels([f"x={x}" for x in range(cols)])
         self._tbl.setVerticalHeaderLabels([f"E{e+1}" for e in range(etapas)])
         self._tbl.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        # Limpiar celda (0,0) = asignar 0 → retorno 0 para todas las etapas
         for e in range(etapas):
             for x in range(cols):
                 self._tbl.setItem(e, x, QTableWidgetItem("0"))
         self._tbl.setFixedHeight(min(etapas * 27 + 32, 220))
 
-        # Fila de mínimos
         self._tbl_min.setRowCount(1)
         self._tbl_min.setColumnCount(etapas)
         self._tbl_min.setHorizontalHeaderLabels([f"E{e+1}" for e in range(etapas)])
@@ -610,16 +567,12 @@ class MatrizWidget(QWidget):
             for r in range(rows)
         ]
 
-        # Extender o recortar cada fila a W_real+1 columnas
         if W_real is not None and W_real + 1 != cols:
             matriz = []
             for fila in matriz_raw:
                 if W_real + 1 <= cols:
-                    # Recortar
                     matriz.append(fila[:W_real + 1])
                 else:
-                    # Extender: detectar paso (incremento por unidad) de la fila
-                    # usando los últimos dos valores no-cero
                     vals_nz = [(x, v) for x, v in enumerate(fila) if v > 0]
                     if len(vals_nz) >= 2:
                         x1, v1 = vals_nz[-2]
@@ -637,9 +590,6 @@ class MatrizWidget(QWidget):
         else:
             matriz = matriz_raw
 
-        # El usuario ingresa la demanda mínima en unidades de retorno.
-        # Convertimos al mínimo de recursos (x) buscando la primera columna
-        # de cada etapa cuyo retorno >= demanda mínima solicitada.
         min_x = []
         demandas = []
         for e in range(self._tbl_min.columnCount()):
@@ -650,18 +600,13 @@ class MatrizWidget(QWidget):
                 min_x.append(0)
                 continue
             fila = matriz[e] if e < len(matriz) else []
-            x_min = len(fila) - 1  # fallback
+            x_min = len(fila) - 1
             for x, val in enumerate(fila):
                 if val >= demanda:
                     x_min = x
                     break
             min_x.append(x_min)
         return matriz, min_x, demandas
-
-
-# ════════════════════════════════════════════════════════════════
-#  VISTA — Panel de resultados
-# ════════════════════════════════════════════════════════════════
 
 class PanelResultados(QWidget):
     """Panel derecho: muestra tabla DP, solución y traza."""
@@ -747,8 +692,6 @@ class PanelResultados(QWidget):
         tbl.setFixedHeight(min(rows * 26 + 34, 320))
         return tbl
 
-    # ── API pública ──────────────────────────────────────────────
-
     def mostrar_error(self, msg: str):
         self._limpiar()
         self._lbl_hdr.setText("Error")
@@ -787,8 +730,6 @@ class PanelResultados(QWidget):
 
         lay.addStretch()
 
-    # ── Builders ────────────────────────────────────────────────
-
     def _build_info_box(self, d: dict) -> QFrame:
         frame = QFrame(); frame.setObjectName("card_info")
         lay = QVBoxLayout(frame)
@@ -808,7 +749,6 @@ class PanelResultados(QWidget):
             f"font-family:'Courier New',monospace; font-size:11px;")
         lay.addWidget(rec)
 
-        # Mostrar mínimos si aplica
         if d.get("min_x"):
             mins = d["min_x"]
             filas = d.get("filas", [f"E{i+1}" for i in range(len(mins))])
@@ -828,7 +768,6 @@ class PanelResultados(QWidget):
         lay.setContentsMargins(16, 12, 16, 12)
         lay.setSpacing(28)
 
-        # Valor óptimo
         col1 = QVBoxLayout()
         l1 = QLabel("TOTAL ÓPTIMO")
         l1.setStyleSheet(f"color:{C['text_s']}; font-size:9px; letter-spacing:2px;")
@@ -838,11 +777,9 @@ class PanelResultados(QWidget):
         col1.addWidget(l1); col1.addWidget(v1)
         lay.addLayout(col1)
 
-        # Detalles por algoritmo
         col2 = QVBoxLayout(); col2.setSpacing(3)
 
         if "asignaciones" in d and d.get("asignaciones") is not None:
-            # Tabla personalizada — mostrar asignación por etapa
             filas = d.get("filas", [])
             asig  = d["asignaciones"]
             rets  = d.get("retornos", [])
@@ -954,7 +891,6 @@ class PanelResultados(QWidget):
             acum  += ret
             mn     = min_x[r] if r < len(min_x) else 0
             dem    = demandas[r] if r < len(demandas) else mn
-            # Mostrar demanda original si está disponible, sino el x mínimo
             mn_str = f"≥ {dem} ret  (x≥{mn})" if dem > 0 else f"≥ {mn}"
             data = [
                 (nombre,          C["accent2"]),
@@ -969,7 +905,6 @@ class PanelResultados(QWidget):
                 item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
                 tbl.setItem(r, c, item)
 
-        # Fila total
         total_data = [
             ("TOTAL", C["text_s"]),
             (str(sum(asig)), C["accent"]),
@@ -986,11 +921,6 @@ class PanelResultados(QWidget):
 
         tbl.setFixedHeight(min((n + 1) * 24 + 34, 220))
         return tbl
-
-
-# ════════════════════════════════════════════════════════════════
-#  CONTROLADOR — VentanaPrincipal
-# ════════════════════════════════════════════════════════════════
 
 class VentanaPrincipal(QMainWindow):
     """Orquesta Vista y Modelo."""
@@ -1052,7 +982,6 @@ class VentanaPrincipal(QMainWindow):
         scroll.setWidget(inner_w)
         outer.addWidget(scroll)
 
-        # ── Configuración ──
         grp_cfg = QGroupBox("Configuración")
         gl = QGridLayout(grp_cfg); gl.setSpacing(7)
 
@@ -1087,14 +1016,12 @@ class VentanaPrincipal(QMainWindow):
         gl.addWidget(btn_gen, 4, 0, 1, 2)
         ilay.addWidget(grp_cfg)
 
-        # ── Datos dinámicos ──
         self._grp_dat = QGroupBox("Función Objetivo / Datos")
         self._dat_lay = QVBoxLayout(self._grp_dat)
         self._dat_lay.setContentsMargins(8, 10, 8, 8)
         self._dat_lay.setSpacing(6)
         ilay.addWidget(self._grp_dat)
 
-        # ── Parámetros DAG ──
         self._grp_dag = QGroupBox("Parámetros DAG")
         dgl = QGridLayout(self._grp_dag); dgl.setSpacing(6)
         dgl.addWidget(QLabel("Nº Nodos:"), 0, 0)
@@ -1116,7 +1043,6 @@ class VentanaPrincipal(QMainWindow):
 
         ilay.addStretch()
 
-        # ── Botones de acción ──
         btn_bar = QWidget()
         btn_bar.setStyleSheet(
             f"background:{C['bg_panel']}; border-top:1px solid {C['border']};")
@@ -1131,8 +1057,6 @@ class VentanaPrincipal(QMainWindow):
         outer.addWidget(btn_bar)
 
         return frame
-
-    # ── Slots ────────────────────────────────────────────────────
 
     def _on_algo_change(self):
         idx = self._cmb_algo.currentIndex()
@@ -1238,11 +1162,6 @@ class VentanaPrincipal(QMainWindow):
     def _limpiar(self):
         self._result_panel.limpiar_pantalla()
 
-
-# ════════════════════════════════════════════════════════════════
-#  PUNTO DE ENTRADA
-# ════════════════════════════════════════════════════════════════
-
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Programación Dinámica MVC")
@@ -1251,7 +1170,6 @@ def main():
     ventana = VentanaPrincipal()
     ventana.show()
     sys.exit(app.exec())
-
 
 if __name__ == "__main__":
     main()

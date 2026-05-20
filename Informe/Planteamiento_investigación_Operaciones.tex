@@ -1,0 +1,519 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage[dvipsnames,table]{xcolor}
+\usepackage{tcolorbox}
+\usepackage{titlesec}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{array}
+
+\geometry{top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm}
+
+\definecolor{darkblue}{HTML}{1A4371}
+\definecolor{lightblue}{HTML}{F1F4F8}
+\definecolor{tableheader}{HTML}{E2E9F3}
+\definecolor{formulaback}{HTML}{F8F9FA}
+\definecolor{codeback}{HTML}{F4F4F4}
+\definecolor{commentgreen}{HTML}{008000}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\pagestyle{empty}
+
+\titleformat{\section}
+{\color{darkblue}\normalfont\Large\bfseries}{\thesection.}{1em}{}[{\titlerule[1.5pt]}]
+\titleformat{\subsection}
+{\color{darkblue}\normalfont\large\bfseries}{\thesubsection.}{1em}{}[{\titlerule[0.5pt]}]
+\titleformat{\subsubsection}
+{\color{darkblue}\normalfont\normalsize\bfseries}{\thesubsubsection.}{1em}{}
+
+\newtcolorbox{accentbar}{
+	sharp corners,
+	boxrule=0pt,
+	leftrule=4pt,
+	colback=white,
+	colframe=darkblue,
+	left=10pt,
+	top=4pt,
+	bottom=4pt,
+	fontupper=\color{darkblue}\bfseries\large
+}
+
+\newtcolorbox{mathbox}{
+	colback=formulaback,
+	colframe=gray!20,
+	arc=4pt,
+	halign=center,
+	boxrule=0.5pt,
+	top=15pt,
+	bottom=15pt
+}
+
+\lstset{
+	backgroundcolor=\color{codeback},
+	commentstyle=\color{commentgreen},
+	keywordstyle=\color{darkblue},
+	numberstyle=\tiny\color{gray},
+	basicstyle=\ttfamily\small,
+	breakatwhitespace=false,
+	breaklines=true,
+	captionpos=b,
+	keepspaces=true,
+	showspaces=false,
+	showstringspaces=false,
+	showtabs=false,
+	tabsize=2
+}
+
+\newcommand{\imgplaceholder}[2]{%
+	\ifdefined\includegraphics
+	\IfFileExists{#1}{\includegraphics[#2]{#1}}{%
+		\fbox{\parbox{0.75\linewidth}{\centering\small Imagen no encontrada:\\\texttt{#1}}}%
+	}
+	\else
+	\fbox{\parbox{0.75\linewidth}{\centering\small Imagen no encontrada:\\\texttt{#1}}}%
+	\fi
+}
+
+\setlist[itemize]{label=\raisebox{0.2ex}{\scriptsize$\blacksquare$}, leftmargin=1.8em}
+
+\begin{document}
+	
+	\begin{center}
+		\vspace*{0.8cm}
+		{\Huge\bfseries\color{darkblue} PROPUESTA DE PROYECTO: OPTIMIZACIÓN DE}\\[0.05cm]
+		{\Huge\bfseries\color{darkblue} LOGÍSTICA}\\[0.05cm]
+		{\Huge\bfseries\color{darkblue} Y DISTRIBUCIÓN}
+	\end{center}
+	
+	\vspace{0.8cm}
+	
+	\section{Contexto del Problema}
+	En el entorno competitivo de la logística urbana, la eficiencia en la “última milla” es crucial para la sostenibilidad financiera y la satisfacción del cliente. La empresa \textbf{Logística Distrital S.A.} enfrenta el reto de distribuir suministros tecnológicos críticos en la ciudad de Bogotá, específicamente en las localidades de Usaquén, Chapinero y Kennedy.
+	
+	El problema radica en que la demanda de entregas suele superar la capacidad inmediata, y los tiempos de desplazamiento varían significativamente debido a la infraestructura vial. Se requiere un modelo que permita tomar decisiones informadas sobre la asignación de la flota vehicular para cumplir con compromisos contractuales de entrega mínima mientras se minimizan los costos operativos representados por el tiempo en ruta.
+	
+	\section{Planteamiento del Problema}
+	Se deben distribuir paquetes utilizando una flota limitada de \textbf{10 camiones}. La operación se divide en tres zonas principales con características distintas de tiempo y capacidad de entrega. El objetivo principal es determinar la asignación óptima de vehículos que minimice el tiempo total de operación, enfocado para Programación Lineal, o maximice el beneficio de entregas, enfocado para Programación Dinámica, garantizando el cumplimiento de las metas mínimas por zona.
+	
+	\vspace{0.35cm}
+	\begin{center}
+		{\renewcommand{\arraystretch}{1.35}
+			\rowcolors{2}{lightblue}{lightblue}
+			\begin{tabular}{|>{\centering\arraybackslash}p{1.2cm}|p{3cm}|>{\centering\arraybackslash}p{3.2cm}|>{\centering\arraybackslash}p{3.4cm}|>{\centering\arraybackslash}p{2.6cm}|}
+				\hline
+				\rowcolor{tableheader} \textbf{\color{darkblue}Zona (i)} & \textbf{\color{darkblue}Nombre} & \textbf{\color{darkblue}Tiempo de Viaje ($t_i$)} & \textbf{\color{darkblue}Paquetes por Vehículo ($p_i$)} & \textbf{\color{darkblue}Demanda Mínima ($d_i$)} \\ \hline
+				1 & Usaquén & 60 min & 15 & 45 \\ \hline
+				2 & Chapinero & 45 min & 10 & 30 \\ \hline
+				3 & Kennedy & 90 min & 20 & 60 \\ \hline
+		\end{tabular}}
+	\end{center}
+	
+	\newpage
+	
+	\section{Modelo Matemático: Método de la Gran M}
+	Este modelo busca la optimización global bajo restricciones de desigualdad.\\
+	En este contexto el modelo tiene el objetivo de minimizar tiempos de entrega cumpliendo con el número de entregas mínimas representadas como las restricciones.
+	\begin{accentbar}
+		Variables de decisión
+	\end{accentbar}
+	\begin{itemize}
+		\item $x_i$: número de vehículos asignados a la zona $i$, donde $i = 1, 2, 3$.
+		\item $a_i$: variables artificiales para penalizar el incumplimiento de la demanda mínima.
+	\end{itemize}
+	
+	\begin{accentbar}
+		Función objetivo
+	\end{accentbar}
+	\begin{mathbox}
+		\large $\min Z = 60x_1 + 45x_2 + 90x_3 + M(a_1 + a_2 + a_3)$
+	\end{mathbox}
+	
+	\begin{accentbar}
+		Restricciones
+	\end{accentbar}
+	\begin{center}
+		\begin{tabular}{@{}r@{\hspace{0.8cm}}l@{\hspace{1.5cm}}l@{}}
+			$x_1 + x_2 + x_3 \le 10$ & & Disponibilidad de flota\\
+			$15x_1 + a_1 \ge 45$ & & Demanda Zona 1\\
+			$10x_2 + a_2 \ge 30$ & & Demanda Zona 2\\
+			$20x_3 + a_3 \ge 60$ & & Demanda Zona 3\\
+			$x_i, a_i \ge 0$ & & No negatividad
+		\end{tabular}
+	\end{center}
+	
+	\section{Modelo Matemático: Programación Dinámica}
+	Este modelo divide el problema en decisiones secuenciales por zonas.\\
+	El objetivo es maximizar los paquetes entregados a cada zona respetando la cantidad mínima que se debe entregar por zona
+	\begin{accentbar}
+		Definiciones
+	\end{accentbar}
+	\begin{itemize}
+		\item \textbf{Etapa ($n$):} representa cada zona a la que se le asignarán recursos, con $n = 1, 2, 3$.
+		\item \textbf{Estado ($s_n$):} número de vehículos disponibles para ser asignados en la etapa $n$ y etapas posteriores.
+		\item \textbf{Decisión ($x_n$):} número de vehículos asignados específicamente a la zona $n$.
+	\end{itemize}
+	
+	\begin{accentbar}
+		Ecuación de recurrencia
+	\end{accentbar}
+	Para maximizar el beneficio total, medido como paquetes entregados:
+	\begin{mathbox}
+		$f_n(s_n) = \max\{p_n(x_n) + f_{n+1}(s_n - x_n)\}$
+	\end{mathbox}
+	
+	Sujeto a:
+	\begin{mathbox}
+		$0 \le x_n \le s_n$
+	\end{mathbox}
+	
+	\newpage
+	
+	\section{Desarrollo de Software}
+	Esta sección presenta la documentación de los algoritmos implementados para resolver y analizar el problema de optimización: el Método de la Gran M y los modelos de Programación Dinámica.
+	
+	\subsection{Método de la Gran M (MetodoDeLaGranM.py)}
+	
+	\subsubsection{Propósito}
+	El archivo implementa un solucionador de programación lineal usando el método simplex con la técnica de la Gran M.
+	
+	\subsubsection{Flujo general}
+	\begin{itemize}
+		\item \textbf{Datos de entrada:} \texttt{maximizar} (booleano del sentido del problema), \texttt{norig} (variables originales $x_1,\dots,x_n$), \texttt{fostr} (cadena con la función objetivo, por ejemplo \texttt{60x1 + 45x2 + 90x3}) y \texttt{constraint\_lines} (restricciones en texto, por ejemplo \texttt{x1 + x2 + x3 <= 10}).
+		\item \textbf{Parser de expresiones y restricciones:} \texttt{parse\_expr} extrae coeficientes; \texttt{parse\_constraint} detecta operadores ($\le$, $\ge$, $=$) y convierte el lado derecho a fracción. También normaliza lados derechos negativos invirtiendo el signo y el operador.
+		\item \textbf{Construcción de variables auxiliares:} agrega holguras $s$ para $\le$, excesos $e$ y artificiales $a$ para $\ge$, y artificiales $a$ para igualdades.
+		\item \textbf{Tabla inicial:} genera el tableau simplex con \texttt{n\_vars} y \texttt{n\_rows}. El vector $c_j$ tiene los coeficientes de la función objetivo y las artificiales reciben una penalización $M$ (\texttt{M\_VALUE = 1\_000\_000}) para forzar su eliminación.
+		\item \textbf{Iteraciones simplex:} calcula $z_j$ y $c_j - z_j$, elige la columna pivote con el mayor $c_j - z_j$, aplica la regla del mínimo cociente y normaliza la fila pivote para actualizar la base.
+		\item \textbf{Condiciones de parada:} si \texttt{best\_czj <= 1e-9}, se alcanza el óptimo; si no existe fila pivote válida, el problema es no acotado; si se supera \texttt{max\_iter = 100}, retorna \texttt{max\_iter}.
+		\item \textbf{Comprobación de factibilidad:} si alguna variable artificial básica tiene $b > 0$, el problema se considera infactible.
+	\end{itemize}
+	
+	\subsubsection{Resultados devueltos}
+	La función principal \texttt{solve\_gran\_m(...)} retorna un par compuesto por:
+	\begin{itemize}
+		\item \texttt{iterations}: lista de iteraciones completas con los datos del tableau, variables básicas, costos básicos, $c_j$, $z_j$, $c_j - z_j$, vector $b$, valor de $z$ e información del pivote.
+		\item \texttt{result}: diccionario con el estado final y la solución.
+	\end{itemize}
+	
+	Campos principales de \texttt{result}:
+	\begin{itemize}
+		\item \texttt{status}: \textit{optimal}, \textit{infeasible}, \textit{unbounded} o \textit{max\_iter}.
+		\item \texttt{sol}: valores de las variables originales cuando hay solución óptima.
+		\item \texttt{z\_real}: valor óptimo ajustado según maximización o minimización.
+		\item \texttt{slack\_sol}: valores de holguras o excesos.
+		\item \texttt{orig\_vars}: nombres de variables originales.
+		\item \texttt{maximizar}: booleano con el sentido del problema.
+	\end{itemize}
+	
+	\subsubsection{Interpretación de resultados}
+	\begin{itemize}
+		\item \textbf{optimal:} el problema tiene una solución óptima factible.
+		\item \textbf{unbounded:} se encontró una dirección de mejora infinita.
+		\item \textbf{infeasible:} no existe una solución factible, debido a variables artificiales no eliminables.
+		\item \textbf{max\_iter:} el algoritmo no convergió antes del límite de iteraciones.
+	\end{itemize}
+	
+	\subsubsection{Puntos críticos}
+	Las variables artificiales se penalizan con $-M$ para forzarlas fuera de la base. El método trabaja con fracciones exactas usando \texttt{fractions.Fraction}, lo que reduce errores numéricos. El código asume que la función objetivo y las restricciones son lineales en $x_1,\ldots,x_n$.
+	
+	\subsubsection{Muestra de prueba del software}
+	A continuación se presenta una prueba visual del flujo del software para resolver un problema mediante el Método de la Gran M.
+	
+	\paragraph{Inicio del método:} se ingresan los datos iniciales del modelo de programación lineal.
+	\begin{center}
+		\vspace{0.25cm}
+		\includegraphics[width=0.42\textwidth]{Img/Datos.png}
+	\end{center}
+	
+	\paragraph{Iteración 0:} se construye la tabla inicial con variables de holgura, exceso y artificiales.
+	\begin{center}
+		\vspace{0.25cm}
+		\includegraphics[width=0.86\textwidth]{Img/Iteracion0.png}
+	\end{center}
+	
+	\paragraph{Iteración 1:} se selecciona el primer pivote para mejorar el valor de la función objetivo.
+	\begin{center}
+		\vspace{0.25cm}
+		\includegraphics[width=0.86\textwidth]{Img/Iteracion1.png}
+	\end{center}
+	
+	\newpage
+	
+	\paragraph{Iteración 2:} se actualiza la tabla y se continúa eliminando variables artificiales.
+	\begin{center}
+		\vspace{0.25cm}
+		\includegraphics[width=0.86\textwidth]{Img/Iteracion2.png}
+	\end{center}
+	
+	\paragraph{Iteración 3:} se realiza el último ajuste de la tabla antes de alcanzar la solución óptima.
+	\begin{center}
+		\vspace{0.25cm}
+		\imgplaceholder{Img/Iteracion3.png}{width=0.86\textwidth}
+	\end{center}
+	
+	\paragraph{Solución:} el software muestra el estado final, las variables óptimas y el valor de la función objetivo.
+	\begin{center}
+		\vspace{0.25cm}
+		\imgplaceholder{Img/Resultado.png}{width=0.86\textwidth}
+	\end{center}
+	
+	\subsection{Programación Dinámica (ProgramacionDinamica.py)}
+	
+	\subsubsection{Propósito}
+	Este módulo ofrece varios modelos de programación dinámica para problemas de optimización discretos.
+	
+	\subsubsection{Estructura general}
+	La clase \texttt{ModeloPD} define métodos estáticos para \texttt{mochila\_01}, \texttt{mochila\_ilimitada}, \texttt{tabla\_personalizada} y \texttt{camino\_dag}. Cada método construye una tabla \texttt{dp}, reconstruye la solución y genera pasos de seguimiento.
+	
+	\subsubsection{Método mochila\_01}
+	La recurrencia compara no incluir el ítem con incluirlo cuando la capacidad lo permite:
+	\begin{mathbox}
+		$dp[i][w] = \max\{dp[i-1][w], dp[i-1][w-p_i] + v_i\}$
+	\end{mathbox}
+	Su salida incluye \texttt{optimo}, \texttt{seleccionados}, \texttt{peso\_usado}, \texttt{dp}, \texttt{pasos} y \texttt{factible}. Soporta tipo \texttt{max} y tipo \texttt{min}, permite mínimos por ítem y reconstruye la solución comparando filas sucesivas.
+	
+	\subsubsection{Método mochila\_ilimitada}
+	La recurrencia evalúa reutilizar ítems mientras el peso no exceda la capacidad:
+	\begin{mathbox}
+		$dp[w] = \max_i\{dp[w-p_i] + v_i\}$
+	\end{mathbox}
+	Su salida incluye \texttt{optimo}, \texttt{usados}, \texttt{dp}, \texttt{pasos} y \texttt{factible}. El estado es unidimensional, por lo que reduce memoria a $O(W)$, e incluye seguimiento \texttt{from[w]} para reconstruir los ítems usados.
+	
+	\subsubsection{Método tabla\_personalizada}
+	La recurrencia general por etapas puede expresarse como:
+	\begin{mathbox}
+		$f[e][s] = \max / \min\{f[e-1][s'], r[e][s]\}, \quad s' \ge s$
+	\end{mathbox}
+	Su salida incluye \texttt{optimo}, \texttt{camino}, \texttt{dp} y \texttt{pasos}. Es un modelo multi-etapas que evalúa decisiones de estado y soporta restricciones de valor mínimo para cada etapa.
+	
+	\subsubsection{Método camino\_dag}
+	La recurrencia para rutas en grafos acíclicos dirigidos es:
+	\begin{mathbox}
+		$\mathrm{dist}[v] = \min / \max\{\mathrm{dist}[u] + w(u,v)\}$
+	\end{mathbox}
+	Su salida incluye \texttt{optimo}, \texttt{camino}, \texttt{dp} o \texttt{dist}, y \texttt{pasos}. El método detecta ciclos, devuelve error si el grafo no es DAG y usa orden topológico para procesar cada vértice una sola vez.
+	\subsubsection{Muestra de prueba del software}
+	\paragraph{Ingreso de datos: } EL primer paso es al ingreso de datos, que incluye la selección del método a usar, el objetivo de maximizar y minimizar, el número de etapas, y el número de recursos
+	se prepara una tabla para ingresar los valores por el valor de cada elemento, y dependiendo del algoritmo se puede ver restricciones para valores mínimos que debe tener cada etapa. 
+	\begin{center}
+		\vspace{0.25cm}
+		\imgplaceholder{Img/PDmetodos.png}{width=0.86\textwidth}
+	\end{center}
+	\begin{center}
+		\vspace{0.25cm}
+		\imgplaceholder{Img/PDDatos.png}{width=0.86\textwidth}
+	\end{center}
+	\paragraph{Solución: } Para la solución se muestra el proceso etapa por etapa, y las decisiones que se tomaron por etapa. También se muestra el valor según se maximiza o minimiza. 
+	\begin{center}
+		\vspace{0.25cm}
+		\imgplaceholder{Img/PDresultados.png}{width=0.86\textwidth}
+	\end{center}
+	\subsection{Complementariedad entre ambos módulos}
+	\texttt{MetodoDeLaGranM.py} resuelve problemas de programación lineal con variables continuas y restricciones lineales. \texttt{ProgramacionDinamica.py} resuelve problemas discretos de optimización combinatoria y de etapas. Ambos buscan optimizar una función objetivo, pero emplean estructuras matemáticas diferentes. Gran M se utiliza cuando el problema puede modelarse como programación lineal con restricciones de igualdad o desigualdad. Programación Dinámica se utiliza cuando el problema tiene estructura discreta, subproblemas superpuestos y decisiones secuenciales.
+	
+	En el código actual, los dos módulos son independientes: no se invoca \texttt{MetodoDeLaGranM.solve\_gran\_m} desde \texttt{ProgramacionDinamica.py}, y no hay función compartida ni intercambio directo de datos. En un sistema más amplio, Gran M podría usarse para problemas de mezcla de producción, transporte o formulaciones lineales, mientras que Programación Dinámica serviría para problemas tipo mochila, rutas, planificación por etapas o decisiones discretas.
+	
+	\subsection{Resultados obtenidos por cada algoritmo}
+	
+	\subsubsection{Resultados de la Gran M}
+	Cuando la solución es óptima, el módulo devuelve los valores de $x_1, x_2, \ldots, x_n$, el valor óptimo $Z^*$, holguras o excesos y el estado de la solución. Los estados posibles son \texttt{optimal}, \texttt{infeasible}, \texttt{unbounded} y \texttt{max\_iter}.
+	
+	\begin{lstlisting}[language=Python]
+		{
+			'status': 'optimal',
+			'sol': {'x1': 12, 'x2': 4},
+			'z_real': 100,
+			'slack_sol': {'s1': 0, 'e2': 5},
+			'orig_vars': ['x1', 'x2'],
+			'maximizar': True,
+		}
+	\end{lstlisting}
+	
+	\subsubsection{Resultados de Programación Dinámica}
+	Para \texttt{mochila\_01}, la salida típica incluye \texttt{optimo}, \texttt{seleccionados}, \texttt{peso\_usado}, \texttt{dp} y \texttt{factible}.
+	
+	\begin{lstlisting}[language=Python]
+		{
+			'algoritmo': 'Mochila 0/1',
+			'optimo': 25,
+			'seleccionados': [0, 2],
+			'peso_usado': 7,
+			'capacidad': 10,
+			'factible': True,
+		}
+	\end{lstlisting}
+	
+	Para \texttt{mochila\_ilimitada}, la salida típica contiene el valor óptimo para la capacidad total, la frecuencia de cada ítem y el vector de valores por capacidad.
+	
+	\begin{lstlisting}[language=Python]
+		{
+			'algoritmo': 'Mochila Ilimitada',
+			'optimo': 30,
+			'usados': {1: 3, 2: 1},
+			'factible': True,
+		}
+	\end{lstlisting}
+	
+	Para \texttt{tabla\_personalizada}, se reporta el valor final de la tabla por etapas, el camino de estados y la matriz de resultados parciales.
+	
+	\begin{lstlisting}[language=Python]
+		{
+			'algoritmo': 'Tabla Personalizada',
+			'optimo': 42,
+			'camino': [2, 1, 0],
+			'factible': True,
+		}
+	\end{lstlisting}
+	
+	Para \texttt{camino\_dag}, se reporta el costo o distancia óptima, la ruta desde el origen hasta el destino y el vector de distancias calculadas.
+	
+	\begin{lstlisting}[language=Python]
+		{
+			'algoritmo': 'Camino en DAG',
+			'optimo': 12,
+			'camino': [0, 3, 5],
+			'factible': True,
+		}
+	\end{lstlisting}
+\section{Resultados y Análisis}
+
+Los modelos matemáticos presentados en las secciones anteriores fueron ejecutados sobre el problema de distribución de \textbf{Logística Distrital S.A.} en las localidades de Usaquén, Chapinero y Kennedy. A continuación se presentan los resultados obtenidos por cada método, junto con su interpretación operativa y una comparación de los enfoques empleados.
+
+\subsection{Resultados del Método de la Gran M}
+
+\begin{accentbar}
+	Solución óptima obtenida
+\end{accentbar}
+
+El algoritmo simplex con la técnica de la Gran M convergió al estado \texttt{optimal} luego de las iteraciones presentadas en la Sección 5.1. La solución encontrada asigna los vehículos de la siguiente manera:
+
+\begin{center}
+	{\renewcommand{\arraystretch}{1.35}
+		\rowcolors{2}{lightblue}{lightblue}
+		\begin{tabular}{|>{\centering\arraybackslash}p{1.2cm}|p{3cm}|>{\centering\arraybackslash}p{2.4cm}|>{\centering\arraybackslash}p{3.2cm}|>{\centering\arraybackslash}p{3.2cm}|}
+			\hline
+			\rowcolor{tableheader} \textbf{\color{darkblue}Zona} & \textbf{\color{darkblue}Nombre} & \textbf{\color{darkblue}Vehículos ($x_i^*$)} & \textbf{\color{darkblue}Paquetes entregados} & \textbf{\color{darkblue}Demanda mínima ($d_i$)} \\ \hline
+			1 & Usaquén   & 3 & $15 \times 3 = 45$ & 45 \\ \hline
+			2 & Chapinero & 3 & $10 \times 3 = 30$ & 30 \\ \hline
+			3 & Kennedy   & 3 & $20 \times 3 = 60$ & 60 \\ \hline
+			\multicolumn{2}{|c|}{\textbf{Total}} & \textbf{9} & \textbf{135} & \textbf{135} \\ \hline
+	\end{tabular}}
+\end{center}
+
+\vspace{0.3cm}
+
+El valor óptimo de la función objetivo, que representa el tiempo total ponderado de operación de la flota asignada, es:
+
+\begin{mathbox}
+	$Z^* = 60(3) + 45(3) + 90(3) = 180 + 135 + 270 = \mathbf{585 \text{ minutos}}$
+\end{mathbox}
+
+\begin{accentbar}
+	Análisis de la solución
+\end{accentbar}
+
+La solución óptima presenta las siguientes características relevantes:
+
+\begin{itemize}
+	\item \textbf{Cumplimiento exacto de demandas mínimas:} las tres zonas satisfacen sus compromisos de entrega de forma ajustada, con holgura cero en cada restricción de demanda ($a_1 = a_2 = a_3 = 0$). Esto indica que no existe capacidad ociosa en ninguna zona; cada vehículo asignado contribuye directamente al cumplimiento del contrato.
+	
+	\item \textbf{Uso parcial de la flota:} se emplean 9 de los 10 camiones disponibles, lo que deja un vehículo sin asignar. Este resultado es consecuencia directa de minimizar el tiempo total: añadir el décimo camión a cualquier zona incrementaría $Z$ sin reducir el incumplimiento de demanda, dado que ésta ya está cubierta.
+	
+	\item \textbf{Distribución uniforme:} el método asigna 3 vehículos a cada zona, lo cual refleja que la combinación de tiempos de viaje y capacidades de entrega por zona produce un equilibrio natural cuando se minimiza el tiempo total bajo las restricciones dadas.
+	
+	\item \textbf{Zona Kennedy como cuello de botella:} aunque recibe el mismo número de vehículos que las demás zonas, Kennedy aporta el mayor costo unitario de tiempo (90 min) y a su vez tiene la mayor capacidad de entrega por vehículo (20 paquetes). Esto la convierte en la zona más costosa en tiempo pero también en la más eficiente en volumen, balance que el modelo resuelve asignándole exactamente los vehículos necesarios para cubrir su demanda mínima.
+\end{itemize}
+
+\subsection{Resultados del Modelo de Programación Dinámica}
+
+\begin{accentbar}
+	Solución óptima por etapas
+\end{accentbar}
+
+El modelo de Programación Dinámica resolvió el problema de manera secuencial, tomando decisiones zona por zona con un estado inicial de $s_1 = 10$ vehículos disponibles. Los resultados por etapa fueron:
+
+\begin{center}
+	{\renewcommand{\arraystretch}{1.35}
+		\rowcolors{2}{lightblue}{lightblue}
+		\begin{tabular}{|>{\centering\arraybackslash}p{1.2cm}|p{3cm}|>{\centering\arraybackslash}p{2.4cm}|>{\centering\arraybackslash}p{2.8cm}|>{\centering\arraybackslash}p{2.4cm}|>{\centering\arraybackslash}p{1.8cm}|}
+			\hline
+			\rowcolor{tableheader} \textbf{\color{darkblue}Etapa ($n$)} & \textbf{\color{darkblue}Zona} & \textbf{\color{darkblue}Vehículos ($x_n^*$)} & \textbf{\color{darkblue}Paquetes entregados} & \textbf{\color{darkblue}Estado ($s_n$)} & \textbf{\color{darkblue}$f_n(s_n)$} \\ \hline
+			1 & Usaquén   & 3 & $15 \times 3 = 45$  & 10 & 45  \\ \hline
+			2 & Chapinero & 3 & $10 \times 3 = 30$  & 7  & 75  \\ \hline
+			3 & Kennedy   & 4 & $20 \times 4 = 80$  & 4  & 155 \\ \hline
+			\multicolumn{2}{|c|}{\textbf{Total}} & \textbf{10} & \textbf{155} & --- & --- \\ \hline
+	\end{tabular}}
+\end{center}
+
+\vspace{0.3cm}
+
+El valor óptimo total de la función de beneficio, medido en paquetes entregados, es:
+
+\begin{mathbox}
+	$f^* = f_1^* + f_2^* + f_3^* = 45 + 30 + 80 = \mathbf{155 \text{ paquetes}}$
+\end{mathbox}
+
+\begin{accentbar}
+	Análisis de la solución
+\end{accentbar}
+
+\begin{itemize}
+	\item \textbf{Uso total de la flota:} a diferencia del Método de la Gran M, la Programación Dinámica agota los 10 vehículos disponibles, dado que su objetivo es maximizar el volumen de entregas. El recurso adicional (el décimo camión) es redirigido hacia Kennedy, la zona de mayor rendimiento por vehículo.
+	
+	\item \textbf{Preferencia por Kennedy en la etapa final:} la asignación de 4 vehículos a la Zona 3 en la tercera etapa se explica por su mayor productividad marginal: cada camión adicional en Kennedy genera 20 paquetes entregados, frente a 15 en Usaquén y 10 en Chapinero. La ecuación de recurrencia identifica esta zona como la de mayor retorno, y por ello concentra allí el recurso sobrante.
+	
+	\item \textbf{Decisiones secuenciales y estado residual:} el estado disponible decrece progresivamente de $s_1 = 10$ a $s_2 = 7$ y $s_3 = 4$, reflejando la asignación acumulada. Este mecanismo garantiza que en ningún momento se supere la disponibilidad de flota, sin necesidad de una restricción global explícita.
+	
+	\item \textbf{Cumplimiento de mínimos garantizado:} las demandas mínimas de cada zona (45, 30 y 60 paquetes respectivamente) son satisfechas en todas las etapas. La etapa 3 supera su mínimo, entregando 80 paquetes en lugar de los 60 requeridos, aprovechando el recurso residual disponible.
+\end{itemize}
+
+\subsection{Comparación entre modelos}
+
+\begin{center}
+	{\renewcommand{\arraystretch}{1.35}
+		\rowcolors{2}{lightblue}{lightblue}
+		\begin{tabular}{|p{4.2cm}|>{\centering\arraybackslash}p{4.5cm}|>{\centering\arraybackslash}p{4.5cm}|}
+			\hline
+			\rowcolor{tableheader} \textbf{\color{darkblue}Criterio} & \textbf{\color{darkblue}Gran M (Minimización)} & \textbf{\color{darkblue}Prog. Dinámica (Maximización)} \\ \hline
+			Objetivo           & Minimizar tiempo total & Maximizar paquetes entregados \\ \hline
+			Vehículos usados   & 9 de 10                & 10 de 10 \\ \hline
+			Asignación Usaquén & 3                      & 3 \\ \hline
+			Asignación Chapinero & 3                    & 3 \\ \hline
+			Asignación Kennedy & 3                      & 4 \\ \hline
+			Total de paquetes  & 135                    & 155 \\ \hline
+			Valor objetivo     & $Z^* = 585$ min        & $f^* = 155$ paquetes \\ \hline
+			Demandas mínimas   & Exactamente cubiertas  & Cubiertas y superadas en Kennedy \\ \hline
+	\end{tabular}}
+\end{center}
+
+\vspace{0.3cm}
+
+Ambos modelos coinciden en la asignación de 3 vehículos a Usaquén y Chapinero, lo que sugiere que esta distribución es robusta independientemente del criterio de optimización. La diferencia principal radica en la Zona Kennedy: cuando el objetivo es minimizar el tiempo, asignar un cuarto camión a Kennedy elevaría innecesariamente $Z$ sin mejorar el cumplimiento de demanda; cuando el objetivo es maximizar entregas, ese mismo camión produce el mayor beneficio marginal posible, de modo que su asignación a Kennedy es la decisión óptima.
+
+Este contraste ilustra cómo la elección del modelo matemático no es neutral: define qué se considera una solución mejor y, en consecuencia, qué decisión operativa se recomienda. Para \textbf{Logística Distrital S.A.}, el Método de la Gran M es adecuado cuando la prioridad es la eficiencia operativa en tiempo y costo de desplazamiento, mientras que la Programación Dinámica resulta más apropiada cuando se busca maximizar el volumen de servicio aprovechando la totalidad de los recursos disponibles.
+\section{Conclusiones}
+
+El desarrollo de este proyecto permitió modelar y resolver un problema real de logística urbana mediante dos enfoques matemáticos complementarios, evidenciando la utilidad práctica de la investigación de operaciones en la toma de decisiones empresariales.
+
+\begin{itemize}
+	\item \textbf{Viabilidad del problema:} ambos modelos confirmaron que es posible cubrir la demanda mínima de las tres zonas de Bogotá con la flota disponible de 10 camiones, lo que valida la factibilidad operativa de \textbf{Logística Distrital S.A.} bajo las condiciones contractuales establecidas.
+	
+	\item \textbf{Eficiencia vs. volumen:} el Método de la Gran M demostró que el tiempo total de operación se minimiza en 585 minutos empleando 9 vehículos, mientras que la Programación Dinámica maximizó las entregas hasta 155 paquetes utilizando los 10 camiones. Ningún enfoque es superior al otro en términos absolutos; la elección depende del criterio estratégico que la empresa priorice en cada escenario.
+	
+	\item \textbf{Robustez de la asignación base:} la coincidencia de ambos modelos en asignar 3 vehículos a Usaquén y 3 a Chapinero refuerza que esta distribución es estable y óptima bajo distintos criterios de optimización, lo que le otorga confiabilidad operativa para la planificación de rutas.
+	
+	\item \textbf{Zona Kennedy como variable crítica:} esta localidad concentra la mayor tensión del problema por su alto tiempo de viaje y su elevada capacidad de entrega por vehículo. Es la zona donde la decisión de asignación genera el mayor impacto diferencial entre modelos, y por tanto debe ser el foco principal del análisis en futuras revisiones de la flota.
+	
+	\item \textbf{Complementariedad de los algoritmos implementados:} \texttt{MetodoDeLaGranM.py} y \texttt{ProgramacionDinamica.py} no son soluciones excluyentes sino herramientas complementarias. El primero es adecuado para problemas continuos con restricciones lineales; el segundo, para decisiones discretas y secuenciales. La disponibilidad de ambos módulos le otorga al sistema la flexibilidad de adaptarse a distintas formulaciones del mismo problema.
+	
+	\item \textbf{Escalabilidad del enfoque:} los modelos desarrollados pueden extenderse a escenarios más complejos, como la incorporación de nuevas zonas, restricciones de ventanas de tiempo, variación dinámica de la demanda o costos diferenciados por tipo de vehículo, sin necesidad de reformular la arquitectura de software desde cero.
+\end{itemize}
+
+En síntesis, la aplicación conjunta de Programación Lineal y Programación Dinámica al problema de distribución de \textbf{Logística Distrital S.A.} no solo produce soluciones óptimas cuantificables, sino que también ofrece una base metodológica sólida para la toma de decisiones logísticas en entornos urbanos complejos como el de Bogotá.
+
+
+\end{document}

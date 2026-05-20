@@ -1,0 +1,11 @@
+*.gz
+*vrb
+*.toc
+*.snm
+*.aux
+*.log
+*.nav
+*.out
+*.fdb_latexmk
+*.fls
+/__pycache__/
